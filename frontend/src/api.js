@@ -97,3 +97,10 @@ export const PRIORITIES = {
   2: 'Medie',
   3: 'Mare',
 }
+
+// Tranzitiile permise (aceleasi ca in backend, routers/tasks.py)
+export const TRANSITIONS = {
+  de_facut: ['in_lucru'],
+  in_lucru: ['de_facut', 'finalizat'],
+  finalizat: ['in_lucru'],
+}

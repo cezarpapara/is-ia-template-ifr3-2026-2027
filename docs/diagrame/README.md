@@ -14,6 +14,22 @@ pentru proiectul vostru.
 | `06-colaborare-adaugare-sarcina.drawio` | colaborare | aceeași interacțiune, cu mesaje numerotate |
 | `07-componente-si-desfasurare.drawio` | componente și desfășurare (2 pagini) | fișierele proiectului; containerele din `compose.yaml` și Ollama |
 
+## Diagramele actualizate (Excalidraw)
+
+Diagramele de mai jos sunt aduse la zi cu codul de pe acest branch (clasa `Comment`, routerul
+`routers/comments.py`, modelul Ollama `gpt-oss:20b`). Fișierele `.drawio` din tabelul de mai sus sunt
+exemplele inițiale din template.
+
+| Fișier | Diagrama |
+|---|---|
+| `01-cazuri-de-utilizare.excalidraw` / `.png` | cazuri de utilizare, cu «include» „Confirmă ștergerea” și comentariile |
+| `02-clase.excalidraw` / `.png` | clase, cu `Comment` (compoziție Task 1 – 0..* Comment) |
+| `07-componente.excalidraw` / `.png` | componente, cu `routers/comments.py` |
+| `07-desfasurare.excalidraw` / `.png` | desfășurare: containerele, porturile și Ollama (`gpt-oss:20b`) |
+
+Fișierele `.excalidraw` se deschid la https://excalidraw.com (meniu → Open) sau în VS Code cu extensia
+Excalidraw (`pomdtr.excalidraw-editor`).
+
 ## Cum le deschideți
 
 - online: https://app.diagrams.net/ → **File → Open from → Device**;

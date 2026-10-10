@@ -58,6 +58,23 @@ class TaskRead(BaseModel):
     project_id: int
 
 
+# ---------- Comentarii ----------
+
+class CommentCreate(BaseModel):
+    text: str = Field(min_length=1, examples=["Am terminat schita diagramei de clase."])
+    author: str = Field(min_length=1, max_length=100, examples=["Ion Popescu"])
+
+
+class CommentRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    text: str
+    author: str
+    created_at: datetime
+    task_id: int
+
+
 # ---------- Inteligenta artificiala (Ollama) ----------
 
 class AiStatus(BaseModel):

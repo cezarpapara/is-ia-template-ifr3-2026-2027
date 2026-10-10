@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 
 from app.config import settings
-from app.routers import ai, health, projects, tasks
+from app.routers import ai, comments, health, projects, tasks
 
 # Aplicatia FastAPI. Documentatia interactiva (Swagger) este la http://localhost:8000/docs
 app = FastAPI(
@@ -24,6 +24,7 @@ app.add_middleware(
 app.include_router(health.router, prefix="/api")
 app.include_router(projects.router, prefix="/api")
 app.include_router(tasks.router, prefix="/api")
+app.include_router(comments.router, prefix="/api")
 app.include_router(ai.router, prefix="/api")
 
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api, PRIORITIES, STATUSES } from '../api.js'
+import { api, PRIORITIES, STATUSES, TRANSITIONS } from '../api.js'
 
 const emptyForm = { title: '', project_id: '', priority: '2' }
 
@@ -153,9 +153,12 @@ function TasksPage() {
                   <td><span className={`badge priority-${task.priority}`}>{PRIORITIES[task.priority]}</span></td>
                   <td>
                     <select value={task.status} onChange={(event) => handleStatusChange(task, event.target.value)}>
-                      {Object.entries(STATUSES).map(([value, label]) => (
-                        <option key={value} value={value}>{label}</option>
-                      ))}
+                      {Object.entries(STATUSES)
+                        .filter(([value]) =>
+                          value === task.status || TRANSITIONS[task.status].includes(value))
+                        .map(([value, label]) => (
+                          <option key={value} value={value}>{label}</option>
+                        ))}
                     </select>
                   </td>
                   <td>

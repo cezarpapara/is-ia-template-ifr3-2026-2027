@@ -47,9 +47,23 @@ Pentru a porni cu o bază de date goală: `docker compose down`, ștergeți con�
 
 ## Diagrame UML
 
-Diagramele se află în `docs/diagrame/`. Diagrama de clase descrie modelul de date din `backend/app/models.py`, inclusiv clasa `Comment` adăugată la laboratorul 2 (sursa: `docs/diagrame/02-clase.excalidraw`).
+Diagramele se află în `docs/diagrame/`; sursa fiecărei imagini este fișierul `.excalidraw` cu același nume.
+
+Diagrama cazurilor de utilizare arată actorii și funcționalitățile aplicației, inclusiv «include» „Confirmă ștergerea” (laboratorul 2) și comentariile la sarcini.
+
+![Diagrama cazurilor de utilizare](docs/diagrame/01-cazuri-de-utilizare.png)
+
+Diagrama de clase descrie modelul de date din `backend/app/models.py`, inclusiv clasa `Comment` adăugată la laboratorul 2.
 
 ![Diagrama de clase](docs/diagrame/02-clase.png)
+
+Diagrama de componente arată modulele frontend-ului și ale backend-ului și dependențele dintre ele, inclusiv routerul `routers/comments.py`.
+
+![Diagrama de componente](docs/diagrame/07-componente.png)
+
+Diagrama de desfășurare arată containerele din `compose.yaml`, porturile lor și Ollama (modelul `gpt-oss:20b`, din `.env`).
+
+![Diagrama de desfășurare](docs/diagrame/07-desfasurare.png)
 
 ## Ollama
 
