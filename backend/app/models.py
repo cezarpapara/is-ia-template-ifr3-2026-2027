@@ -37,3 +37,25 @@ class Task(Base):
     project_id: Mapped[int] = mapped_column(ForeignKey("project.id", ondelete="CASCADE"))
 
     project: Mapped[Project] = relationship(back_populates="tasks")
+    # Relatie 1-n: o sarcina are mai multe comentarii (sterse odata cu sarcina)
+    comments: Mapped[list["Comment"]] = relationship(
+        back_populates="task",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+
+class Comment(Base):
+    __tablename__ = "comment"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    text: Mapped[str] = mapped_column(Text)
+    author: Mapped[str] = mapped_column(String(100))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    task_id: Mapped[int] = mapped_column(
+        ForeignKey("task.id", ondelete="CASCADE")
+    )
+
+    task: Mapped[Task] = relationship(back_populates="comments")
