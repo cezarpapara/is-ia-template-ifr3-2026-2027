@@ -1,35 +1,85 @@
+# ==========================================================================
+#  IS + IA - 3 containere:
+#    is-ia-postgres -> baza de date PostgreSQL       localhost:5432 (pentru DBeaver)
+#    is-ia-python   -> backend-ul FastAPI (Python)   http://localhost:8000/docs
+#    is-ia-node     -> frontend-ul React (Vite)      http://localhost:5173
+#  Fisierele Docker stau in folderul docker/: cate un subfolder pentru fiecare container.
+#  Ollama NU este in Docker: ruleaza direct pe calculator (portul 11434).
+#
+#  Valorile (parole, porturi, modelul Ollama) sunt in fisierul .env,
+#  din folderul principal; aici doar le folosim: ${NUME_VARIABILA}.
+#
+#  Comenzile se ruleaza din FOLDERUL PRINCIPAL al proiectului:
+#    Prima pornire:  docker compose up -d --build
+#    Pornire:        docker compose up -d
+#    Oprire:         docker compose stop
+#    Loguri:         docker compose logs -f backend
+# ==========================================================================
 name: is-ia-template-ifr3-2026-2027
 
 services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: is-ia-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      # baza de date se scrie in subfolderul pgdata (vezi volumul de mai jos)
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      # datele bazei de date stau in proiect, in docker/postgres/data
+      # (folderul este in .gitignore, deci nu ajunge pe GitHub)
+      - ./docker/postgres/data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   backend:
     build:
+      # codul se ia din folderul backend; Dockerfile-ul este in docker/python
       context: ./backend
       dockerfile: ../docker/python/Dockerfile
     container_name: is-ia-python
     environment:
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@host.docker.internal:5432/${POSTGRES_DB}
+      # "postgres" este numele serviciului de mai sus, vazut din reteaua Docker
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       OLLAMA_URL: ${OLLAMA_URL}
       OLLAMA_MODEL: ${OLLAMA_MODEL}
-      GEMINI_API_KEY: ${GEMINI_API_KEY}
-      CORS_ORIGINS: http://localhost:${FRONTEND_PORT},http://127.0.0.1:${FRONTEND_PORT},http://192.168.1.254:${FRONTEND_PORT}
+      CORS_ORIGINS: http://localhost:${FRONTEND_PORT},http://127.0.0.1:${FRONTEND_PORT}
     extra_hosts:
+      # host.docker.internal = calculatorul vostru, vazut din container
       - "host.docker.internal:host-gateway"
     ports:
       - "${BACKEND_PORT}:8000"
     volumes:
+      # codul din backend apare in container in /app;
+      # orice modificare salvata se vede imediat (uvicorn --reload)
       - ./backend:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   frontend:
     build:
+      # codul se ia din folderul frontend; Dockerfile-ul este in docker/node
       context: ./frontend
       dockerfile: ../docker/node/Dockerfile
     container_name: is-ia-node
     environment:
-      VITE_API_URL: http://192.168.1.254:${BACKEND_PORT}
+      # adresa backend-ului, asa cum o vede browserul (import.meta.env.VITE_API_URL)
+      VITE_API_URL: http://localhost:${BACKEND_PORT}
     ports:
       - "${FRONTEND_PORT}:5173"
     volumes:
+      # codul din frontend apare in container in /app;
+      # modificarile salvate se vad imediat in browser
       - ./frontend:/app
+      # node_modules ramane doar in container (nu se amesteca cu Windows/macOS)
       - /app/node_modules
     depends_on:
       - backend
