@@ -15,6 +15,7 @@ dist/
 # contin doar valori pentru lucrul local, fara date secrete.
 # backend/.env si fisierele *.local sunt personale si raman doar pe calculatorul vostru.
 backend/.env
+.env
 *.local
 
 # Datele bazei de date PostgreSQL (create de Docker la prima pornire).
