@@ -1,55 +1,87 @@
 import httpx
+
 from app.config import settings
 
+# Apeluri catre Ollama (LLM local), prin API-ul lui HTTP:
+#   GET  /api/tags -> modelele descarcate
+#   POST /api/chat -> o conversatie cu modelul
+# Documentatie: https://github.com/ollama/ollama/blob/main/docs/api.md
 
+# Cat asteptam raspunsul (in secunde). Pe procesor, un model mic poate raspunde in 10-60 s;
+# la primul apel modelul se incarca in memorie si dureaza mai mult.
+STATUS_TIMEOUT = 5
+CHAT_TIMEOUT = 180
+
+
+# Eroare cu mesaj clar, pe care routerul o transforma in raspuns 503
 class LLMError(Exception):
-    """Exceptie ridicata cand serviciul LLM nu raspunde sau da eroare."""
     pass
 
 
+def _not_running_message() -> str:
+    return (
+        f"Ollama nu raspunde la {settings.ollama_url}. "
+        "Verificati ca Ollama este instalat si pornit pe calculator (comanda: ollama serve)."
+    )
+
+
+def _not_downloaded_message(model: str) -> str:
+    return f"Modelul '{model}' nu este descarcat. Rulati pe calculator: ollama pull {model}"
+
+
 def list_models() -> list[str]:
-    """Interogheaza Ollama si returneaza toate modelele instalate pe server."""
+    """Intoarce numele modelelor descarcate in Ollama (ex. ["qwen2.5:1.5b"])."""
     try:
-        response = httpx.get(f"{settings.OLLAMA_URL}/api/tags", timeout=5.0)
-        if response.status_code == 200:
-            data = response.json()
-            return [model["name"] for model in data.get("models", [])]
-    except Exception:
-        pass
-    return [settings.OLLAMA_MODEL]
+        response = httpx.get(f"{settings.ollama_url}/api/tags", timeout=STATUS_TIMEOUT)
+        response.raise_for_status()
+    except (httpx.ConnectError, httpx.ConnectTimeout):
+        raise LLMError(_not_running_message())
+    except httpx.TimeoutException:
+        raise LLMError(f"Ollama nu a raspuns in {STATUS_TIMEOUT} secunde.")
+    except httpx.HTTPStatusError as error:
+        raise LLMError(f"Ollama a raspuns cu eroarea {error.response.status_code}.")
+    except httpx.HTTPError:
+        raise LLMError(_not_running_message())
+
+    return [item["name"] for item in response.json().get("models", [])]
 
 
-def chat(messages: list[dict], model: str | None = None, response_format: str | None = None) -> str:
-    """Trimite mesajele catre Ollama sau catre Gemini daca este cerut explicit."""
-    selected_model = model or settings.OLLAMA_MODEL
+def is_downloaded(model: str, models: list[str]) -> bool:
+    """Ollama adauga ":latest" cand nu se scrie versiunea (llama3.2 -> llama3.2:latest)."""
+    return model in models or f"{model}:latest" in models
 
-    if "gemini" in selected_model.lower():
-        if not settings.GEMINI_API_KEY:
-            raise LLMError("Cheia GEMINI_API_KEY nu este configurata in .env.")
+
+def chat(messages: list[dict], model: str | None = None, json_format: bool = False) -> str:
+    """Trimite mesajele catre model si intoarce textul raspunsului.
+
+    messages: lista de forma [{"role": "system" | "user" | "assistant", "content": "..."}]
+    json_format: True -> modelul este obligat sa raspunda cu JSON valid
+    """
+    model = model or settings.ollama_model
+    payload = {"model": model, "messages": messages, "stream": False}
+    if json_format:
+        payload["format"] = "json"
+
+    try:
+        response = httpx.post(f"{settings.ollama_url}/api/chat", json=payload, timeout=CHAT_TIMEOUT)
+    except (httpx.ConnectError, httpx.ConnectTimeout):
+        raise LLMError(_not_running_message())
+    except httpx.TimeoutException:
+        raise LLMError(
+            f"Modelul '{model}' nu a raspuns in {CHAT_TIMEOUT} secunde. "
+            "Incercati o intrebare mai scurta sau un model mai mic."
+        )
+    except httpx.HTTPError:
+        raise LLMError(_not_running_message())
+
+    # 404 = modelul cerut nu exista local
+    if response.status_code == 404:
+        raise LLMError(_not_downloaded_message(model))
+    if response.status_code != 200:
         try:
-            from google import genai
-            client = genai.Client(api_key=settings.GEMINI_API_KEY)
-            prompt = "\n".join([m.get("content", "") for m in messages])
-            res = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=prompt
-            )
-            return res.text
-        except Exception as err:
-            raise LLMError(f"Eroare la apelul Gemini API: {err}")
+            details = response.json().get("error", response.text)
+        except ValueError:
+            details = response.text
+        raise LLMError(f"Ollama a raspuns cu eroarea {response.status_code}: {details}")
 
-    payload = {
-        "model": selected_model,
-        "messages": messages,
-        "stream": False
-    }
-    if response_format:
-        payload["format"] = response_format
-
-    try:
-        response = httpx.post(f"{settings.OLLAMA_URL}/api/chat", json=payload, timeout=120.0)
-        if response.status_code != 200:
-            raise LLMError(f"Ollama a returnat status {response.status_code}: {response.text}")
-        return response.json()["message"]["content"]
-    except httpx.RequestError as err:
-        raise LLMError(f"Nu s-a putut contacta serverul Ollama: {err}")
+    return response.json()["message"]["content"]
