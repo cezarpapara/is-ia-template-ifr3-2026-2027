@@ -6,73 +6,80 @@ from pydantic import BaseModel, ConfigDict, Field
 # Schemele Pydantic descriu datele care intra si ies prin API.
 # FastAPI le foloseste pentru validare automata (eroare 422) si pentru Swagger (/docs).
 
-# Statusurile permise pentru o sarcina
-TaskStatus = Literal["de_facut", "in_lucru", "finalizat"]
+# Statusurile permise pentru un incident (diagrama de stari a incidentului)
+IncidentStatus = Literal["deschis", "confirmat", "in_lucru", "rezolvat", "inchis"]
 
 
-# ---------- Proiecte ----------
+# ---------- Servicii ----------
 
-class ProjectCreate(BaseModel):
-    name: str = Field(min_length=1, max_length=100, examples=["Magazin online"])
-    description: str | None = Field(default=None, examples=["Proiectul echipei 1"])
+class ServiceCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=100, examples=["api-gateway"])
+    description: str | None = Field(default=None, examples=["Punctul de intrare pentru cererile externe."])
+    owner: str = Field(min_length=1, max_length=100, examples=["Echipa Platforma"])
+    tier: int = Field(default=2, ge=1, le=3)
 
 
-class ProjectRead(BaseModel):
+class ServiceRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
     name: str
     description: str | None
+    owner: str
+    tier: int
     created_at: datetime
-    task_count: int = 0
+    open_incident_count: int = 0
 
 
-# ---------- Sarcini ----------
+# ---------- Incidente ----------
 
-class TaskCreate(BaseModel):
-    title: str = Field(min_length=1, max_length=200, examples=["Diagrama cazurilor de utilizare"])
+# Un incident nou porneste mereu din starea "deschis", deci statusul nu se trimite la creare
+class IncidentCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=200, examples=["Latenta mare pe /checkout"])
     description: str | None = None
-    status: TaskStatus = "de_facut"
-    priority: int = Field(default=2, ge=1, le=3)
-    project_id: int
+    severity: int = Field(default=2, ge=1, le=3)
+    service_id: int
 
 
 # La modificare toate campurile sunt optionale: se trimit doar cele care se schimba
-class TaskUpdate(BaseModel):
+class IncidentPatch(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=200)
     description: str | None = None
-    status: TaskStatus | None = Field(default=None, examples=["in_lucru"])
-    priority: int | None = Field(default=None, ge=1, le=3)
-    project_id: int | None = None
+    severity: int | None = Field(default=None, ge=1, le=3)
+    status: IncidentStatus | None = Field(default=None, examples=["confirmat"])
+    postmortem: str | None = None
 
 
-class TaskRead(BaseModel):
+class IncidentRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
     title: str
     description: str | None
-    status: TaskStatus
-    priority: int
-    created_at: datetime
-    project_id: int
+    severity: int
+    status: IncidentStatus
+    postmortem: str | None
+    opened_at: datetime
+    acknowledged_at: datetime | None
+    resolved_at: datetime | None
+    service_id: int
 
 
-# ---------- Comentarii ----------
+# ---------- Cronologia incidentului ----------
 
-class CommentCreate(BaseModel):
-    text: str = Field(min_length=1, examples=["Am terminat schita diagramei de clase."])
+class IncidentUpdateCreate(BaseModel):
+    text: str = Field(min_length=1, examples=["Am facut rollback la versiunea 1.4.2."])
     author: str = Field(min_length=1, max_length=100, examples=["Ion Popescu"])
 
 
-class CommentRead(BaseModel):
+class IncidentUpdateRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
     text: str
     author: str
     created_at: datetime
-    task_id: int
+    incident_id: int
 
 
 # ---------- Inteligenta artificiala (Ollama) ----------
@@ -85,7 +92,7 @@ class AiStatus(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    message: str = Field(min_length=1, examples=["Ce este o diagrama de clase UML?"])
+    message: str = Field(min_length=1, examples=["Ce este un postmortem fara vinovati?"])
     system: str | None = Field(default=None, examples=["Raspunde scurt, in limba romana."])
 
 
@@ -94,6 +101,8 @@ class ChatResponse(BaseModel):
     answer: str
 
 
-class SubtasksResponse(BaseModel):
-    task_id: int
-    subtasks: list[str]
+class PostmortemDraft(BaseModel):
+    incident_id: int
+    cauza: str
+    impact: str
+    actiuni: list[str]

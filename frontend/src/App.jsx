@@ -1,6 +1,7 @@
 import { NavLink, Route, Routes } from 'react-router'
 import HomePage from './pages/HomePage.jsx'
-import TasksPage from './pages/TasksPage.jsx'
+import IncidentsPage from './pages/IncidentsPage.jsx'
+import IncidentDetailPage from './pages/IncidentDetailPage.jsx'
 import AssistantPage from './pages/AssistantPage.jsx'
 import './App.css'
 
@@ -9,10 +10,10 @@ function App() {
   return (
     <>
       <header className="header">
-        <span className="logo">IS + IA</span>
+        <span className="logo">Incidente on-call</span>
         <nav>
           <NavLink to="/" end>Acasa</NavLink>
-          <NavLink to="/sarcini">Sarcini</NavLink>
+          <NavLink to="/incidente">Incidente</NavLink>
           <NavLink to="/asistent">Asistent IA</NavLink>
         </nav>
       </header>
@@ -21,7 +22,8 @@ function App() {
         {/* Fiecare adresa (URL) afiseaza o alta pagina */}
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/sarcini" element={<TasksPage />} />
+          <Route path="/incidente" element={<IncidentsPage />} />
+          <Route path="/incidente/:id" element={<IncidentDetailPage />} />
           <Route path="/asistent" element={<AssistantPage />} />
           <Route path="*" element={<p>Pagina nu exista.</p>} />
         </Routes>

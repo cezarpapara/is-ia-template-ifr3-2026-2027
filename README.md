@@ -1,9 +1,9 @@
-# Template de proiect – Inginerie software și Inteligență artificială
+# Incidente on-call – proiect Inginerie software și Inteligență artificială
 
-Proiect de pornire pentru laboratoarele de **Inginerie software** și **Inteligență artificială**, Informatică IFR, anul III, 2026–2027.
+Proiectul lui Andrei Apostol (branch-ul `apostol.andrei`) pentru laboratoarele de **Inginerie software** și **Inteligență artificială**, Informatică IFR, anul III, 2026–2027, construit pe template-ul disciplinei.
 Cadru didactic: Asist. univ. drd. asoc. Cezar-Marian Papară.
 
-Aplicația gestionează proiecte și sarcini și are un asistent bazat pe un model de limbaj (LLM) care rulează local:
+Aplicația gestionează incidentele serviciilor unei echipe on-call: raportarea pe servicii, ciclul de viață deschis → confirmat → în lucru → rezolvat → închis (cu regulile verificate în API), cronologia de actualizări și un draft de postmortem propus de un model de limbaj (LLM) care rulează local:
 
 - **backend** – Python 3.12, FastAPI, SQLAlchemy, Alembic, cu bază de date PostgreSQL 17;
 - **frontend** – React 19 + Vite;

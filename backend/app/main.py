@@ -3,12 +3,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 
 from app.config import settings
-from app.routers import ai, comments, health, projects, tasks
+from app.routers import ai, health, incident_updates, incidents, services
 
 # Aplicatia FastAPI. Documentatia interactiva (Swagger) este la http://localhost:8000/docs
 app = FastAPI(
-    title="IS + IA – API template",
-    description="API pentru laboratoarele de Inginerie software si Inteligenta artificiala.",
+    title="Incidente on-call – API",
+    description="Gestionarea incidentelor pentru serviciile unei echipe on-call (proiect IS + IA).",
     version="1.0.0",
 )
 
@@ -22,9 +22,9 @@ app.add_middleware(
 
 # Toate rutele API incep cu /api
 app.include_router(health.router, prefix="/api")
-app.include_router(projects.router, prefix="/api")
-app.include_router(tasks.router, prefix="/api")
-app.include_router(comments.router, prefix="/api")
+app.include_router(services.router, prefix="/api")
+app.include_router(incidents.router, prefix="/api")
+app.include_router(incident_updates.router, prefix="/api")
 app.include_router(ai.router, prefix="/api")
 
 

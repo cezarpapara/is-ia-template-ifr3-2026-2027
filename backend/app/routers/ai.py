@@ -5,8 +5,8 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import get_db
-from app.models import Task
-from app.schemas import AiStatus, ChatRequest, ChatResponse, SubtasksResponse
+from app.models import Incident
+from app.schemas import AiStatus, ChatRequest, ChatResponse, PostmortemDraft
 from app.services import llm
 
 router = APIRouter(prefix="/ai", tags=["Inteligenta artificiala"])
@@ -45,60 +45,81 @@ def ai_chat(data: ChatRequest):
 
 
 # Instructiunile pentru model: ce trebuie sa faca si in ce format sa raspunda
-SUBTASKS_PROMPT = (
-    "Esti un asistent pentru managementul proiectelor software. "
-    "Imparte sarcina primita in 3-5 subsarcini concrete, scurte, in limba romana. "
-    'Raspunde DOAR cu JSON de forma: {"subtasks": ["subsarcina 1", "subsarcina 2", "subsarcina 3"]}'
+POSTMORTEM_PROMPT = (
+    "Esti un inginer SRE care scrie postmortem-uri fara vinovati (blameless), in limba romana. "
+    "Pe baza incidentului si a cronologiei lui, scrie un draft scurt: cauza, impactul asupra "
+    "utilizatorilor si 2-4 actiuni concrete care previn repetarea incidentului. "
+    'Raspunde DOAR cu JSON de forma: {"cauza": "...", "impact": "...", "actiuni": ["actiune 1", "actiune 2"]}'
 )
 
 
-# POST /api/ai/tasks/{id}/subtasks - modelul propune subsarcini (nu se salveaza in baza de date)
-@router.post("/tasks/{task_id}/subtasks", response_model=SubtasksResponse)
-def ai_subtasks(task_id: int, db: Session = Depends(get_db)):
-    task = db.get(Task, task_id)
-    if task is None:
-        raise HTTPException(status_code=404, detail=f"Sarcina {task_id} nu exista.")
+# POST /api/ai/incidents/{id}/postmortem - modelul propune un draft de postmortem (nu se salveaza)
+@router.post("/incidents/{incident_id}/postmortem", response_model=PostmortemDraft)
+def ai_postmortem(incident_id: int, db: Session = Depends(get_db)):
+    incident = db.get(Incident, incident_id)
+    if incident is None:
+        raise HTTPException(status_code=404, detail=f"Incidentul {incident_id} nu exista.")
 
-    text = f"Proiect: {task.project.name}\nSarcina: {task.title}"
-    if task.description:
-        text += f"\nDescriere: {task.description}"
     messages = [
-        {"role": "system", "content": SUBTASKS_PROMPT},
-        {"role": "user", "content": text},
+        {"role": "system", "content": POSTMORTEM_PROMPT},
+        {"role": "user", "content": describe_incident(incident)},
     ]
-
     try:
         answer = llm.chat(messages, json_format=True)
     except llm.LLMError as error:
         raise HTTPException(status_code=503, detail=str(error))
 
-    subtasks = parse_subtasks(answer)
-    if not subtasks:
+    draft = parse_postmortem(answer)
+    if draft is None:
         raise HTTPException(status_code=502, detail="Modelul nu a raspuns in formatul cerut. Incercati din nou.")
-    return SubtasksResponse(task_id=task_id, subtasks=subtasks)
+    return PostmortemDraft(incident_id=incident_id, **draft)
 
 
-def parse_subtasks(answer: str) -> list[str]:
-    """Extrage lista de subsarcini din raspunsul JSON al modelului.
+def describe_incident(incident: Incident) -> str:
+    """Textul trimis modelului: datele incidentului si cronologia lui (orele sunt in UTC, ca in baza de date)."""
+    lines = [
+        f"Serviciu: {incident.service.name} (responsabil: {incident.service.owner})",
+        f"Incident: {incident.title}",
+        f"Severitate: SEV{incident.severity}",
+        f"Deschis la: {incident.opened_at:%Y-%m-%d %H:%M} UTC",
+    ]
+    if incident.description:
+        lines.append(f"Descriere: {incident.description}")
+    if incident.resolved_at:
+        lines.append(f"Rezolvat la: {incident.resolved_at:%Y-%m-%d %H:%M} UTC")
+    if incident.updates:
+        lines.append("Cronologie:")
+        lines += [
+            f"- {update.created_at:%Y-%m-%d %H:%M} UTC, {update.author}: {update.text}" for update in incident.updates
+        ]
+    return "\n".join(lines)
 
-    Modelele mici nu respecta mereu formatul, asa ca acceptam si variante apropiate:
-    {"subtasks": ["a", "b"]}, ["a", "b"] sau {"subtasks": [{"title": "a"}, ...]}.
+
+def parse_postmortem(answer: str) -> dict | None:
+    """Extrage cauza, impactul si actiunile din raspunsul JSON al modelului.
+
+    Modelele nu respecta mereu formatul exact, asa ca acceptam si actiuni scrise ca un singur text
+    sau ca obiecte ({"actiune": "..."}). Fara cauza si impact, raspunsul nu este folosibil.
     """
     try:
         data = json.loads(answer)
     except json.JSONDecodeError:
-        return []
+        return None
+    if not isinstance(data, dict):
+        return None
 
-    if isinstance(data, dict):
-        # prima valoare de tip lista din obiect (de obicei cheia "subtasks")
-        data = next((value for value in data.values() if isinstance(value, list)), [])
-    if not isinstance(data, list):
-        return []
+    cause, impact, actions = data.get("cauza"), data.get("impact"), data.get("actiuni")
+    if not isinstance(cause, str) or not cause.strip() or not isinstance(impact, str) or not impact.strip():
+        return None
+    if isinstance(actions, str):
+        actions = [actions]
+    if not isinstance(actions, list):
+        actions = []
 
-    subtasks = []
-    for item in data:
+    clean = []
+    for item in actions:
         if isinstance(item, dict):
             item = next((value for value in item.values() if isinstance(value, str)), "")
         if isinstance(item, str) and item.strip():
-            subtasks.append(item.strip())
-    return subtasks[:5]
+            clean.append(item.strip())
+    return {"cauza": cause.strip(), "impact": impact.strip(), "actiuni": clean[:5]}

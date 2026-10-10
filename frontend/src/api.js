@@ -50,29 +50,36 @@ export const api = {
   // GET /api/health
   getHealth: () => request('/api/health'),
 
-  // GET /api/projects
-  getProjects: () => request('/api/projects'),
+  // GET /api/services
+  getServices: () => request('/api/services'),
 
-  // POST /api/projects
-  createProject: (project) =>
-    request('/api/projects', { method: 'POST', body: JSON.stringify(project) }),
+  // POST /api/services
+  createService: (service) =>
+    request('/api/services', { method: 'POST', body: JSON.stringify(service) }),
 
-  // GET /api/tasks?project_id=&status=
-  getTasks: (filters = {}) => request(`/api/tasks${queryString(filters)}`),
+  // GET /api/incidents?service_id=&status=&severity=
+  getIncidents: (filters = {}) => request(`/api/incidents${queryString(filters)}`),
 
-  // GET /api/tasks/{id}
-  getTask: (id) => request(`/api/tasks/${id}`),
+  // GET /api/incidents/{id}
+  getIncident: (id) => request(`/api/incidents/${id}`),
 
-  // POST /api/tasks
-  createTask: (task) =>
-    request('/api/tasks', { method: 'POST', body: JSON.stringify(task) }),
+  // POST /api/incidents
+  createIncident: (incident) =>
+    request('/api/incidents', { method: 'POST', body: JSON.stringify(incident) }),
 
-  // PATCH /api/tasks/{id}
-  updateTask: (id, changes) =>
-    request(`/api/tasks/${id}`, { method: 'PATCH', body: JSON.stringify(changes) }),
+  // PATCH /api/incidents/{id}
+  updateIncident: (id, changes) =>
+    request(`/api/incidents/${id}`, { method: 'PATCH', body: JSON.stringify(changes) }),
 
-  // DELETE /api/tasks/{id}
-  deleteTask: (id) => request(`/api/tasks/${id}`, { method: 'DELETE' }),
+  // DELETE /api/incidents/{id}
+  deleteIncident: (id) => request(`/api/incidents/${id}`, { method: 'DELETE' }),
+
+  // GET /api/incidents/{id}/updates
+  getIncidentUpdates: (id) => request(`/api/incidents/${id}/updates`),
+
+  // POST /api/incidents/{id}/updates
+  addIncidentUpdate: (id, update) =>
+    request(`/api/incidents/${id}/updates`, { method: 'POST', body: JSON.stringify(update) }),
 
   // GET /api/ai/status
   getAiStatus: () => request('/api/ai/status'),
@@ -81,26 +88,35 @@ export const api = {
   chat: (message, system) =>
     request('/api/ai/chat', { method: 'POST', body: JSON.stringify({ message, system }) }),
 
-  // POST /api/ai/tasks/{id}/subtasks
-  suggestSubtasks: (taskId) => request(`/api/ai/tasks/${taskId}/subtasks`, { method: 'POST' }),
+  // POST /api/ai/incidents/{id}/postmortem
+  draftPostmortem: (id) => request(`/api/ai/incidents/${id}/postmortem`, { method: 'POST' }),
 }
 
-// Textele afisate pentru statusuri si prioritati
+// Textele afisate pentru statusuri si severitati
 export const STATUSES = {
-  de_facut: 'De facut',
+  deschis: 'Deschis',
+  confirmat: 'Confirmat',
   in_lucru: 'In lucru',
-  finalizat: 'Finalizat',
+  rezolvat: 'Rezolvat',
+  inchis: 'Inchis',
 }
 
-export const PRIORITIES = {
-  1: 'Mica',
-  2: 'Medie',
-  3: 'Mare',
+export const SEVERITIES = {
+  1: 'SEV1 - critic',
+  2: 'SEV2 - major',
+  3: 'SEV3 - minor',
 }
 
-// Tranzitiile permise (aceleasi ca in backend, routers/tasks.py)
+// Tranzitiile permise (aceleasi ca in backend, routers/incidents.py)
 export const TRANSITIONS = {
-  de_facut: ['in_lucru'],
-  in_lucru: ['de_facut', 'finalizat'],
-  finalizat: ['in_lucru'],
+  deschis: ['confirmat'],
+  confirmat: ['in_lucru'],
+  in_lucru: ['rezolvat'],
+  rezolvat: ['in_lucru', 'inchis'],
+  inchis: [],
+}
+
+// Data si ora in formatul local (ex. 10.10.2026, 14:05); "-" daca lipseste
+export function formatDate(value) {
+  return value ? new Date(value).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short' }) : '-'
 }

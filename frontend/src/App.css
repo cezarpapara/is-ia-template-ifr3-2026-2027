@@ -101,24 +101,53 @@ td {
   border-bottom: 1px solid #e4e7eb;
 }
 
-/* Etichete pentru prioritate */
+/* Etichete pentru severitate: SEV1 = critic (rosu), SEV2 = major, SEV3 = minor */
 .badge {
   display: inline-block;
   padding: 2px 8px;
   border-radius: 10px;
   font-size: 0.85rem;
+  white-space: nowrap;
 }
 
-.priority-1 {
-  background: #e3f9e5;
+.sev-1 {
+  background: #ffe3e3;
 }
 
-.priority-2 {
+.sev-2 {
   background: #fff3c4;
 }
 
-.priority-3 {
-  background: #ffe3e3;
+.sev-3 {
+  background: #e3f9e5;
+}
+
+/* Detaliile unui incident: eticheta in stanga, valoarea in dreapta */
+.details {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 16px;
+  margin: 0;
+}
+
+.details dt {
+  color: #52606d;
+}
+
+.details dd {
+  margin: 0;
+}
+
+/* Cronologia incidentului */
+.timeline {
+  list-style: none;
+  padding-left: 0;
+}
+
+.timeline li {
+  border-left: 3px solid #cbd2d9;
+  padding: 4px 0 8px 12px;
+  margin-bottom: 4px;
 }
 
 /* Formulare */
@@ -208,7 +237,10 @@ button:disabled {
   margin: 4px 0;
 }
 
-/* Lista numerotata cu subsarcinile propuse */
-.subtasks {
-  padding-left: 36px;
+/* Campul pentru postmortem ocupa toata latimea cardului */
+.postmortem {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  margin-bottom: 8px;
 }

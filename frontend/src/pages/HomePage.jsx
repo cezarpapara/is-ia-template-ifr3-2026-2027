@@ -24,8 +24,8 @@ function HomePage() {
 
   return (
     <>
-      <h1>Aplicatie IS + IA</h1>
-      <p className="subtitle">Frontend React conectat la un backend FastAPI si la un model de limbaj local (Ollama)</p>
+      <h1>Incidente on-call</h1>
+      <p className="subtitle">Gestionarea incidentelor pentru serviciile unei echipe on-call: React, FastAPI, PostgreSQL si un model de limbaj local (Ollama)</p>
 
       <section className="card">
         <h2>Backend si baza de date</h2>
