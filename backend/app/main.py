@@ -1,15 +1,31 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 
 from app.config import settings
-from app.routers import ai, health, projects, tasks
+from app.routers import health, jobs, memory, modele, projects, system, tasks
+from app.services import system as telemetry
+from app.services import worker
 
-# Aplicatia FastAPI. Documentatia interactiva (Swagger) este la http://localhost:8000/docs
+
+# La pornire: telemetria (CPU/RAM) si worker-ul care proceseaza agenda; la oprire le oprim
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    telemetry.start()
+    worker.start()
+    yield
+    worker.stop()
+    telemetry.stop()
+
+
+# Aplicatia FastAPI. Documentatia interactiva (Swagger) este la /docs
 app = FastAPI(
-    title="IS + IA – API template",
-    description="API pentru laboratoarele de Inginerie software si Inteligenta artificiala.",
-    version="1.0.0",
+    title="Scriptorium – orchestrator de modele locale",
+    description="Agenda de joburi pentru LLM-uri, istoric, memorie si telemetria serverului.",
+    version="2.0.0",
+    lifespan=lifespan,
 )
 
 # CORS: permite frontend-ului React (alt port) sa apeleze API-ul din browser
@@ -21,10 +37,8 @@ app.add_middleware(
 )
 
 # Toate rutele API incep cu /api
-app.include_router(health.router, prefix="/api")
-app.include_router(projects.router, prefix="/api")
-app.include_router(tasks.router, prefix="/api")
-app.include_router(ai.router, prefix="/api")
+for module in (health, jobs, memory, modele, system, projects, tasks):
+    app.include_router(module.router, prefix="/api")
 
 
 # Adresa principala trimite la documentatie
