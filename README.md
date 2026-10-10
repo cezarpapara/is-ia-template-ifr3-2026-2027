@@ -45,6 +45,12 @@ docs/diagrame/    diagramele UML (draw.io)
 Dacă un port este ocupat sau vreți alt model Ollama, modificați valoarea în `.env`, apoi rulați `docker compose up -d`.
 Pentru a porni cu o bază de date goală: `docker compose down`, ștergeți conținutul folderului `docker/postgres/data` (fără fișierul `.gitkeep`), apoi `docker compose up -d`.
 
+## Diagrame UML
+
+Diagramele se află în `docs/diagrame/`. Diagrama de clase descrie modelul de date din `backend/app/models.py`, inclusiv clasa `Comment` adăugată la laboratorul 2 (sursa: `docs/diagrame/02-clase.excalidraw`).
+
+![Diagrama de clase](docs/diagrame/02-clase.png)
+
 ## Ollama
 
 Instalați Ollama de pe https://ollama.com și descărcați modelul implicit:
