@@ -1,137 +1,835 @@
+/* Interfata pentru o consola on-call, in stilul semnalizarii rutiere si feroviare:
+   cerneala bleumarin pe hartie tehnica gri-rece; culorile de semnal (rosu, portocaliu,
+   galben, verde) apar doar acolo unde arata o stare (severitatea, lampile serviciilor). */
 :root {
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  color: #1f2933;
-  background: #f5f7fa;
+  --paper: #eef2f3;
+  --surface: #ffffff;
+  --ink: #13233a;
+  --ink-soft: #2a3c55;
+  --muted: #4f5d70;
+  --rule: #d3dbe1;
+  --rule-soft: #e3e8ec;
+  --field: #b9c4cd;
+  --signal-red: #c4161c;
+  --signal-orange: #e07a10;
+  --signal-yellow: #f2cf4a;
+  --signal-green: #0b7a3e;
+  --idle: #8a97a6;
+
+  font-family: 'Overpass', system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--ink);
+  background: var(--paper);
+  font-variant-numeric: tabular-nums;
 }
 
 body {
   margin: 0;
+  background: var(--paper);
 }
 
-/* Meniul de sus */
-.header {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  padding: 12px 24px;
-  background: #1f2933;
+a {
+  color: var(--ink);
+  text-underline-offset: 3px;
 }
 
-.logo {
-  color: #ffffff;
-  font-weight: 700;
+a:hover {
+  color: var(--ink-soft);
 }
 
-.header nav {
-  display: flex;
-  gap: 16px;
-}
-
-.header a {
-  color: #cbd2d9;
-  text-decoration: none;
-}
-
-.header a.active {
-  color: #ffffff;
-  font-weight: 600;
-}
-
-/* Continutul paginii */
-.container {
-  max-width: 900px;
-  margin: 32px auto;
-  padding: 0 16px;
-}
-
-h1 {
-  margin-bottom: 4px;
-}
-
-.subtitle,
 .muted {
-  color: #52606d;
+  color: var(--muted);
 }
 
-.card {
-  background: #ffffff;
-  border: 1px solid #e4e7eb;
-  border-radius: 8px;
-  padding: 20px 24px;
-  margin: 16px 0;
-}
-
-code {
-  background: #f0f4f8;
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-
-/* Mesaje de stare (verde = merge, rosu = problema) */
-.status {
-  border-radius: 6px;
-  padding: 12px 16px;
-  margin: 16px 0;
-}
-
-.status p {
-  margin: 4px 0;
-}
-
-.status-ok {
-  background: #e3f9e5;
-  border: 1px solid #57ae5b;
-}
-
-.status-error {
-  background: #ffe3e3;
-  border: 1px solid #e12d39;
-}
-
-/* Tabele */
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-th,
-td {
-  text-align: left;
-  padding: 8px;
-  border-bottom: 1px solid #e4e7eb;
-}
-
-/* Etichete pentru severitate: SEV1 = critic (rosu), SEV2 = major, SEV3 = minor */
-.badge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-size: 0.85rem;
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
   white-space: nowrap;
 }
 
-.sev-1 {
-  background: #ffe3e3;
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
 }
 
-.sev-2 {
-  background: #fff3c4;
+/* ---------- Bara de sus: numele aplicatiei, navigarea, starea sistemului ---------- */
+.masthead {
+  background: var(--surface);
+  border-bottom: 1px solid var(--rule);
 }
 
-.sev-3 {
-  background: #e3f9e5;
+.masthead-inner {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 0 clamp(16px, 4vw, 40px);
+  min-height: 64px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 32px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  font-size: 18px;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.nav a {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 6px;
+  color: var(--muted);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.nav a:hover {
+  color: var(--ink);
+  background: var(--paper);
+}
+
+.nav a.active {
+  color: var(--ink);
+  box-shadow: inset 0 -3px 0 var(--ink);
+  border-radius: 0;
+}
+
+.system {
+  margin-left: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.system span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ---------- Continutul paginii ---------- */
+.content {
+  box-sizing: border-box;
+  padding: 36px clamp(16px, 4vw, 40px) 64px;
+}
+
+.page {
+  max-width: 1080px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px 24px;
+}
+
+.page-header > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  max-width: 44rem;
+}
+
+h1 {
+  margin: 0;
+  font-size: 40px;
+  line-height: 1.1;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+h2 {
+  margin: 0;
+  font-size: 19px;
+  line-height: 1.3;
+  font-weight: 700;
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--muted);
+  font-size: 17px;
+}
+
+.breadcrumb {
+  font-size: 15px;
+  color: var(--muted);
+}
+
+.breadcrumb a {
+  color: var(--muted);
+}
+
+/* Panou alb, folosit pentru formulare si continut citit (nu pentru orice) */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 22px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.columns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.column-main {
+  flex: 2 1 520px;
+  min-width: 0;
+}
+
+.column-side {
+  flex: 1 1 320px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ---------- Butoane ---------- */
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  background: var(--ink);
+  color: #ffffff;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.button:hover:not(:disabled) {
+  background: var(--ink-soft);
+  border-color: var(--ink-soft);
+}
+
+.button-secondary {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.button-secondary:hover:not(:disabled) {
+  background: var(--paper);
+  border-color: var(--ink);
+}
+
+.icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--signal-red);
+}
+
+.icon-button:hover {
+  border-color: var(--signal-red);
+}
+
+/* ---------- Campuri de formular ---------- */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+input,
+select,
+textarea {
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 0 12px;
+  border: 1px solid var(--field);
+  border-radius: 6px;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--ink);
+  background: var(--surface);
+}
+
+textarea {
+  padding: 10px 12px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+/* ---------- Tabloul serviciilor: o lampa de semnal pentru fiecare serviciu ---------- */
+.board {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.board-tile {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  column-gap: 16px;
+  padding: 20px 22px;
+  box-shadow: 1px 0 0 var(--rule), 0 1px 0 var(--rule);
+}
+
+.board-tile > :not(.lamp) {
+  grid-column: 2;
+  margin: 0;
+}
+
+.board-name {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.board-owner {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.board-tile .board-state {
+  margin-top: 10px;
+  font-size: 15px;
+}
+
+/* Lampa: culoarea arata cel mai grav incident activ al serviciului */
+.lamp {
+  grid-row: 1 / span 3;
+  width: 22px;
+  height: 22px;
+  margin-top: 2px;
+  border-radius: 50%;
+  background: var(--lamp, var(--idle));
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--lamp, var(--idle)) 18%, transparent);
+}
+
+.lamp-small {
+  width: 10px;
+  height: 10px;
+  margin: 0;
+  box-shadow: none;
+  flex: none;
+}
+
+.lamp-sev-1 {
+  --lamp: var(--signal-red);
+}
+
+.lamp-sev-2 {
+  --lamp: var(--signal-orange);
+}
+
+.lamp-sev-3 {
+  --lamp: var(--signal-yellow);
+}
+
+.lamp-clear {
+  --lamp: var(--signal-green);
+}
+
+.lamp-down {
+  --lamp: var(--signal-red);
+}
+
+/* Singura miscare care porneste singura: lampile se aprind una dupa alta la incarcare */
+@keyframes lamp-on {
+  from {
+    opacity: 0.15;
+    transform: scale(0.55);
+  }
+}
+
+.board .lamp {
+  animation: lamp-on 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: calc(var(--i, 0) * 140ms + 120ms);
+}
+
+/* ---------- Formularul de raportare (se deschide din buton) ---------- */
+@keyframes report-open {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+.report {
+  animation: report-open 0.22s ease-out;
+}
+
+.report-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+  align-items: end;
+}
+
+.report-form .field-wide {
+  grid-column: span 2;
+}
+
+/* Alegerea severitatii: butoane radio aratate ca un control segmentat */
+.segmented {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.segmented legend {
+  padding: 0;
+  margin-bottom: 6px;
+}
+
+.segmented-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border: 1px solid var(--field);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.segmented-options label {
+  display: grid;
+  place-items: center;
+  min-height: 42px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.segmented-options label + label {
+  border-left: 1px solid var(--field);
+}
+
+.segmented-options input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.segmented-options label:has(input:checked) {
+  background: var(--ink);
+  color: #ffffff;
+}
+
+.segmented-options label:has(input:focus-visible) {
+  outline: 2px solid var(--ink);
+  outline-offset: -4px;
+}
+
+/* ---------- Lista incidentelor ---------- */
+.list-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px 24px;
+  border-bottom: 2px solid var(--ink);
+}
+
+/* Filtrul pe status: file (tabs) cu numarul de incidente din fiecare stare */
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.tabs button:hover {
+  color: var(--ink);
+}
+
+.tabs button[aria-pressed='true'] {
+  color: var(--ink);
+  box-shadow: inset 0 -4px 0 var(--ink);
+}
+
+.tab-count {
+  min-width: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--rule-soft);
+  font-size: 13px;
+  line-height: 22px;
+  text-align: center;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px 16px;
+  margin-bottom: 4px;
+}
+
+.filters .field {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.filters select {
+  min-height: 40px;
+  font-size: 15px;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  min-width: 820px;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+
+th {
+  padding: 14px 12px 10px;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+td {
+  padding: 16px 12px;
+  border-top: 1px solid var(--rule);
+  vertical-align: middle;
+}
+
+tbody tr:hover {
+  background: rgba(255, 255, 255, 0.6);
+}
+
+th:first-child,
+td:first-child {
+  padding-left: 4px;
+}
+
+th:last-child,
+td:last-child {
+  padding-right: 4px;
+  text-align: right;
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.incident-number {
+  color: var(--muted);
+  width: 3.5rem;
+}
+
+.incident-link {
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.incident-link:hover {
+  text-decoration: underline;
+}
+
+.row-closed,
+.row-closed .incident-link {
+  color: var(--muted);
+}
+
+.row-closed .incident-link {
+  font-weight: 600;
+}
+
+.empty {
+  margin: 0;
+  padding: 24px 4px;
+  color: var(--muted);
+}
+
+/* Severitatea: eticheta in culoarea semnalului, ca pe un tablou de comanda */
+.tag {
+  display: inline-block;
+  padding: 3px 8px 1px;
+  border-radius: 3px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.tag-large {
+  padding: 5px 10px 3px;
+  font-size: 15px;
+}
+
+.tag.sev-1 {
+  background: var(--signal-red);
+  color: #ffffff;
+}
+
+.tag.sev-2 {
+  background: var(--signal-orange);
+  color: #241200;
+}
+
+.tag.sev-3 {
+  background: var(--signal-yellow);
+  color: #2b2100;
+}
+
+/* Statusul in tabel: cinci segmente (etapele din diagrama de stari) + lista de tranzitii */
+.status-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.track {
+  display: inline-grid;
+  grid-template-columns: repeat(5, 9px);
+  gap: 2px;
+  flex: none;
+}
+
+.track span {
+  height: 6px;
+  border-radius: 1px;
+  background: var(--rule);
+}
+
+.track span.on {
+  background: var(--ink);
+}
+
+.track-closed span.on {
+  background: var(--idle);
+}
+
+.status-cell select {
+  min-height: 38px;
+  padding: 0 8px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* ---------- Pagina unui incident ---------- */
+.incident-head h1 {
+  font-size: 36px;
+}
+
+.incident-title {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+/* Ciclul de viata: o linie cu "statii", ca pe o harta de cale ferata */
+.line {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.line li {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 30px;
+  padding-right: 8px;
+}
+
+/* Linia dintre statii */
+.line li::before {
+  content: '';
+  position: absolute;
+  top: 9px;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--rule);
+}
+
+.line li:last-child::before {
+  right: auto;
+  width: 20px;
+}
+
+.line li.passed::before {
+  background: var(--ink);
+}
+
+/* Statia */
+.line li::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 22px;
+  height: 22px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 4px solid var(--rule);
+  background: var(--surface);
+}
+
+.line li.passed::after {
+  border-color: var(--ink);
+  background: var(--ink);
+}
+
+.line li.here::after {
+  border-color: var(--ink);
+  background: var(--surface);
+  box-shadow: 0 0 0 5px rgba(19, 35, 58, 0.15);
+}
+
+.line-name {
+  font-weight: 700;
+}
+
+.line li:not(.passed):not(.here) .line-name {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.line-time {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+/* Mesaje: eroare, succes si regula de inchidere */
+.notice {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 18px;
+  border-radius: 6px;
+  font-size: 15px;
+}
+
+.notice svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.notice p {
+  margin: 0;
+}
+
+.notice-error {
+  background: #fbe3e2;
+  color: #7c0f13;
+}
+
+.notice-ok {
+  background: #e1f1e7;
+  color: #0a4f29;
+}
+
+.notice-rule {
+  background: #fdf3d0;
+  color: #4a3800;
 }
 
 /* Detaliile unui incident: eticheta in stanga, valoarea in dreapta */
 .details {
   display: grid;
   grid-template-columns: max-content 1fr;
-  gap: 6px 16px;
+  gap: 8px 16px;
   margin: 0;
+  font-size: 15px;
 }
 
 .details dt {
-  color: #52606d;
+  color: var(--muted);
 }
 
 .details dd {
@@ -141,106 +839,126 @@ td {
 /* Cronologia incidentului */
 .timeline {
   list-style: none;
-  padding-left: 0;
+  margin: 0;
+  padding: 0;
 }
 
 .timeline li {
-  border-left: 3px solid #cbd2d9;
-  padding: 4px 0 8px 12px;
-  margin-bottom: 4px;
-}
-
-/* Formulare */
-.form {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.form-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 14px 1fr;
+  column-gap: 12px;
+  padding-bottom: 16px;
 }
 
-.filters {
-  margin-bottom: 12px;
-}
-
-input,
-select,
-textarea {
-  padding: 8px 10px;
-  border: 1px solid #cbd2d9;
-  border-radius: 6px;
-  font-size: 1rem;
-  font-family: inherit;
-}
-
-button {
-  background: #2f5fd0;
-  color: #ffffff;
-  border: none;
-  border-radius: 6px;
-  padding: 8px 16px;
-  font-size: 1rem;
-  cursor: pointer;
-}
-
-button:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-.button-secondary {
-  background: #f0f4f8;
-  color: #1f2933;
-  border: 1px solid #cbd2d9;
-  font-size: 0.9rem;
-}
-
-.button-danger {
-  background: #e12d39;
-  padding: 4px 10px;
-  font-size: 0.9rem;
-}
-
-/* Asistent IA */
-.chat-form {
+.timeline-rail {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
+  align-items: center;
 }
 
-.chat-form textarea {
+.timeline-rail::before {
+  content: '';
+  width: 10px;
+  height: 10px;
+  margin-top: 7px;
+  border-radius: 50%;
+  background: var(--ink);
+}
+
+.timeline-rail::after {
+  content: '';
+  flex: 1;
+  width: 2px;
+  margin-top: 4px;
+  background: var(--rule);
+}
+
+.timeline li:last-child .timeline-rail::after {
+  display: none;
+}
+
+.timeline-meta {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.timeline-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 16px;
+  border-top: 1px solid var(--rule);
+}
+
+.timeline-form .button {
+  align-self: flex-start;
+}
+
+/* Postmortem-ul si draftul propus de model */
+.postmortem {
+  min-height: 280px;
   width: 100%;
-  box-sizing: border-box;
-  resize: vertical;
+  font-size: 16px;
 }
 
+.draft-badge {
+  padding: 2px 10px 0;
+  border: 1px solid var(--ink);
+  border-radius: 3px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* ---------- Asistent IA si Starea sistemului ---------- */
 .examples {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin: 12px 0;
 }
 
 .answer {
-  background: #f0f4f8;
+  padding: 16px 18px;
   border-radius: 6px;
-  padding: 12px 16px;
-  margin: 16px 0;
+  background: var(--paper);
 }
 
 .answer p {
-  white-space: pre-wrap; /* pastreaza randurile noi din raspunsul modelului */
   margin: 4px 0;
+  max-width: 72ch;
+  white-space: pre-wrap; /* pastreaza randurile noi din raspunsul modelului */
 }
 
-/* Campul pentru postmortem ocupa toata latimea cardului */
-.postmortem {
-  width: 100%;
-  box-sizing: border-box;
-  resize: vertical;
-  margin-bottom: 8px;
+code {
+  font-size: 14px;
+  background: var(--paper);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* ---------- Ecrane inguste ---------- */
+@media (max-width: 640px) {
+  h1 {
+    font-size: 32px;
+  }
+
+  .line {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    row-gap: 20px;
+  }
+
+  .report-form .field-wide {
+    grid-column: auto;
+  }
+
+  .system {
+    margin-left: 0;
+  }
+}
+
+/* Fara animatii pentru cine le-a dezactivat din sistem */
+@media (prefers-reduced-motion: reduce) {
+  .board .lamp,
+  .report {
+    animation: none;
+  }
 }

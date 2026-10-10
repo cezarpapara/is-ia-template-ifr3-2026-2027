@@ -96,16 +96,19 @@ export const api = {
 export const STATUSES = {
   deschis: 'Deschis',
   confirmat: 'Confirmat',
-  in_lucru: 'In lucru',
+  in_lucru: 'În lucru',
   rezolvat: 'Rezolvat',
-  inchis: 'Inchis',
+  inchis: 'Închis',
 }
 
 export const SEVERITIES = {
-  1: 'SEV1 - critic',
-  2: 'SEV2 - major',
-  3: 'SEV3 - minor',
+  1: 'SEV1 critic',
+  2: 'SEV2 major',
+  3: 'SEV3 minor',
 }
+
+// Etapele din diagrama de stari, in ordine
+export const STEPS = ['deschis', 'confirmat', 'in_lucru', 'rezolvat', 'inchis']
 
 // Tranzitiile permise (aceleasi ca in backend, routers/incidents.py)
 export const TRANSITIONS = {
@@ -116,7 +119,9 @@ export const TRANSITIONS = {
   inchis: [],
 }
 
-// Data si ora in formatul local (ex. 10.10.2026, 14:05); "-" daca lipseste
+// Ziua si ora in formatul local (ex. 10 oct., 14:05); "—" daca lipseste
 export function formatDate(value) {
-  return value ? new Date(value).toLocaleString('ro-RO', { dateStyle: 'short', timeStyle: 'short' }) : '-'
+  return value
+    ? new Date(value).toLocaleString('ro-RO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+    : '—'
 }

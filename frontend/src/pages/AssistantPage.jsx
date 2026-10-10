@@ -3,9 +3,9 @@ import { api } from '../api.js'
 
 // Exemple de intrebari, puse pe butoane
 const EXAMPLES = [
-  'Ce este un postmortem fara vinovati (blameless)?',
-  'Care este diferenta dintre un incident SEV1 si unul SEV3?',
-  'Ce inseamna MTTA si MTTR?',
+  'Ce este un postmortem fără vinovați (blameless)?',
+  'Care este diferența dintre un incident SEV1 și unul SEV3?',
+  'Ce înseamnă MTTA și MTTR?',
 ]
 
 // Instructiunea de sistem: spune modelului cum sa se comporte
@@ -47,43 +47,50 @@ function AssistantPage() {
   }
 
   return (
-    <>
-      <h1>Asistent IA</h1>
-      <p className="subtitle">Intrebarile sunt trimise modelului de limbaj care ruleaza local, in Ollama. Draftul de postmortem se genereaza din pagina fiecarui incident.</p>
+    <div className="page">
+      <header className="page-header">
+        <div>
+          <h1>Asistent IA</h1>
+          <p className="subtitle">Întrebările merg la modelul de limbaj care rulează local, în Ollama. Draftul de postmortem se generează din pagina fiecărui incident.</p>
+        </div>
+      </header>
 
-      <section className="card">
-        <h2>Intreaba modelul</h2>
-        <form onSubmit={handleSubmit} className="chat-form">
-          <textarea
-            value={message}
-            onChange={(event) => setMessage(event.target.value)}
-            placeholder="Scrieti o intrebare..."
-            rows={3}
-            required
-          />
-          <button type="submit" disabled={thinking}>Trimite</button>
+      <section className="card" aria-labelledby="ask-title">
+        <h2 id="ask-title">Întreabă modelul</h2>
+        <form onSubmit={handleSubmit} className="timeline-form">
+          <label className="field">
+            Întrebarea
+            <textarea
+              value={message}
+              onChange={(event) => setMessage(event.target.value)}
+              placeholder="Scrieți o întrebare..."
+              rows={3}
+              required
+            />
+          </label>
+          <button type="submit" className="button" disabled={thinking}>Trimite întrebarea</button>
         </form>
 
         <div className="examples">
           {EXAMPLES.map((text) => (
-            <button key={text} className="button-secondary" onClick={() => handleExample(text)} disabled={thinking}>
+            <button key={text} type="button" className="button button-secondary" onClick={() => handleExample(text)} disabled={thinking}>
               {text}
             </button>
           ))}
         </div>
 
-        {thinking && <p className="muted">Modelul se gandeste...</p>}
+        {thinking && <p className="muted">Modelul se gândește...</p>}
 
-        {error && <div className="status status-error">{error}</div>}
+        {error && <div className="notice notice-error" role="alert"><p>{error}</p></div>}
 
         {answer && (
           <div className="answer">
-            <p className="muted">Raspuns ({answer.model}):</p>
+            <p className="muted">Răspunsul modelului {answer.model}:</p>
             <p>{answer.answer}</p>
           </div>
         )}
       </section>
-    </>
+    </div>
   )
 }
 

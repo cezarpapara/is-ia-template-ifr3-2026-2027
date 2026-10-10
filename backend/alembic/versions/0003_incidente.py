@@ -71,44 +71,44 @@ def upgrade() -> None:
     def add_incident(**values):
         return connection.execute(sa.insert(incident).values(**values).returning(incident.c.id)).scalar_one()
 
-    gateway = add_service("api-gateway", "Punctul de intrare pentru toate cererile externe.", "Echipa Platforma", 1)
-    payments = add_service("plati-online", "Procesarea platilor cu cardul.", "Echipa Plati", 1)
-    emails = add_service("notificari-email", "Trimiterea e-mailurilor catre clienti.", "Echipa Comunicare", 3)
+    gateway = add_service("api-gateway", "Punctul de intrare pentru toate cererile externe.", "Echipa Platformă", 1)
+    payments = add_service("plati-online", "Procesarea plăților cu cardul.", "Echipa Plăți", 1)
+    emails = add_service("notificari-email", "Trimiterea e-mailurilor către clienți.", "Echipa Comunicare", 3)
 
     now = datetime.now(timezone.utc)
     hours = lambda n: now - timedelta(hours=n)  # noqa: E731
 
     latency = add_incident(
-        title="Latenta mare (p95 peste 2 s) pe /checkout", severity=2, status="in_lucru",
+        title="Latență mare (p95 peste 2 s) pe /checkout", severity=2, status="in_lucru",
         opened_at=hours(3), acknowledged_at=hours(2.8), service_id=gateway,
     )
     payment_errors = add_incident(
-        title="Plati respinse cu eroarea 502", severity=1, status="rezolvat",
-        description="Aproximativ 30% din plati esuau la procesatorul de carduri.",
+        title="Plăți respinse cu eroarea 502", severity=1, status="rezolvat",
+        description="Aproximativ 30% din plăți eșuau la procesatorul de carduri.",
         opened_at=hours(26), acknowledged_at=hours(25.9), resolved_at=hours(24), service_id=payments,
     )
     add_incident(
-        title="E-mailurile de confirmare intarzie 10 minute", severity=3, status="deschis",
+        title="E-mailurile de confirmare întârzie 10 minute", severity=3, status="deschis",
         opened_at=hours(0.5), service_id=emails,
     )
     add_incident(
         title="Certificat TLS expirat pe staging", severity=2, status="inchis",
         opened_at=hours(72), acknowledged_at=hours(71.9), resolved_at=hours(71), service_id=gateway,
-        postmortem="Cauza: reinnoirea automata a certificatului era dezactivata pe staging.\n"
-                   "Impact: testele de integrare au esuat timp de o ora.\n"
-                   "Actiuni: reinnoire automata activata; alerta cu 14 zile inainte de expirare.",
+        postmortem="Cauza: reînnoirea automată a certificatului era dezactivată pe staging.\n"
+                   "Impact: testele de integrare au eșuat timp de o oră.\n"
+                   "Acțiuni: reînnoire automată activată; alertă cu 14 zile înainte de expirare.",
     )
 
     op.bulk_insert(
         incident_update,
         [
-            {"text": "Alerta p95 > 2 s pe /checkout, confirmata de on-call.", "author": "Ana Ionescu",
+            {"text": "Alertă p95 > 2 s pe /checkout, confirmată de on-call.", "author": "Ana Ionescu",
              "created_at": hours(2.8), "incident_id": latency},
-            {"text": "Cauza probabila: pool-ul de conexiuni catre baza de date este epuizat.", "author": "Ana Ionescu",
+            {"text": "Cauza probabilă: pool-ul de conexiuni către baza de date este epuizat.", "author": "Ana Ionescu",
              "created_at": hours(2), "incident_id": latency},
-            {"text": "Procesatorul de carduri raspunde cu 502 dupa ultima lansare.", "author": "Mihai Pop",
+            {"text": "Procesatorul de carduri răspunde cu 502 după ultima lansare.", "author": "Mihai Pop",
              "created_at": hours(25.5), "incident_id": payment_errors},
-            {"text": "Rollback la versiunea 3.7.1; platile functioneaza din nou.", "author": "Mihai Pop",
+            {"text": "Rollback la versiunea 3.7.1; plățile funcționează din nou.", "author": "Mihai Pop",
              "created_at": hours(24), "incident_id": payment_errors},
         ],
     )
