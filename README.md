@@ -39,7 +39,7 @@ docker/
   python/         Dockerfile-ul containerului is-ia-python
   node/           Dockerfile-ul containerului is-ia-node
   postgres/data/  datele bazei de date (create la prima pornire; nu se urcă pe GitHub)
-docs/diagrame/    diagramele UML (draw.io)
+docs/diagrame/    diagramele UML (.excalidraw + .png; .drawio = exemplele din template)
 ```
 
 Dacă un port este ocupat sau vreți alt model Ollama, modificați valoarea în `.env`, apoi rulați `docker compose up -d`.
@@ -47,34 +47,69 @@ Pentru a porni cu o bază de date goală: `docker compose down`, ștergeți con�
 
 ## Diagrame UML
 
-Diagramele se află în `docs/diagrame/`; sursa fiecărei imagini este fișierul `.excalidraw` cu același nume.
+Diagramele se află în `docs/diagrame/`; sursa fiecărei imagini este fișierul `.excalidraw` cu același nume. Toate descriu codul de pe acest branch.
 
-Diagrama cazurilor de utilizare arată actorii și funcționalitățile aplicației, inclusiv «include» „Confirmă ștergerea” (laboratorul 2) și comentariile la sarcini.
+### Cazuri de utilizare
 
 ![Diagrama cazurilor de utilizare](docs/diagrame/01-cazuri-de-utilizare.png)
 
-Diagrama de clase descrie modelul de date din `backend/app/models.py`, inclusiv clasa `Comment` adăugată la laboratorul 2.
+Fiecare caz de utilizare se regăsește în aplicație (matricea de trasabilitate):
+
+| Caz de utilizare | Endpoint | Funcția din backend | Pagina React |
+|---|---|---|---|
+| Verifică starea sistemului | `GET /api/health`, `GET /api/ai/status` | `health()`, `ai_status()` | Starea sistemului (`/stare`), bara de sus |
+| Vede incidentele | `GET /api/incidents` | `list_incidents()` | Incidente (`/incidente`) |
+| Filtrează incidentele | `GET /api/incidents?service_id=&status=&severity=` | `list_incidents()` | Incidente: filele de status și filtrele |
+| Raportează un incident | `POST /api/incidents` | `create_incident()` | Incidente: „Raportează incident” |
+| Schimbă statusul incidentului | `PATCH /api/incidents/{id}` | `update_incident()`, `check_transition()` | Incidente (lista de status), Detaliu incident (butoane) |
+| Închide incidentul | `PATCH /api/incidents/{id}` cu `status: inchis` | `update_incident()`, `check_can_close()` | Detaliu incident: „Închide incidentul” |
+| Adaugă o actualizare în cronologie | `POST /api/incidents/{id}/updates` | `create_update()` | Detaliu incident: Cronologie |
+| Scrie postmortem-ul | `PATCH /api/incidents/{id}` cu `postmortem` | `update_incident()` | Detaliu incident: Postmortem |
+| Generează draft cu IA | `POST /api/ai/incidents/{id}/postmortem` | `ai_postmortem()` | Detaliu incident: „Generează draft cu IA” |
+| Șterge un incident raportat greșit | `DELETE /api/incidents/{id}` | `delete_incident()` | Incidente: butonul de ștergere (`window.confirm`) |
+| Întreabă asistentul IA | `POST /api/ai/chat` | `ai_chat()` | Asistent IA (`/asistent`) |
+| Gestionează serviciile | `GET`, `POST /api/services` | `list_services()`, `create_service()` | Incidente: tabloul serviciilor (adăugarea, din Swagger) |
+
+### Clase
+
+Modelul de date din `backend/app/models.py`: `Service`, `Incident` și `IncidentUpdate`, legate prin compoziții (ștergerea în cascadă).
 
 ![Diagrama de clase](docs/diagrame/02-clase.png)
 
-Diagrama de componente arată modulele frontend-ului și ale backend-ului și dependențele dintre ele, inclusiv routerul `routers/comments.py`.
+### Stări
+
+Ciclul de viață al unui incident. Fiecare tranziție este verificată în `backend/app/routers/incidents.py` (`ALLOWED_TRANSITIONS`, `check_transition()`, `check_can_close()`), iar interfața oferă doar tranzițiile permise (`TRANSITIONS` din `frontend/src/api.js`).
+
+![Diagrama de stări a incidentului](docs/diagrame/03-stari-incident.png)
+
+### Secvență
+
+Cazul „Închide incidentul”, de la clic până la PostgreSQL și înapoi, cu ramura de eroare 400 pentru un incident SEV1/SEV2 fără postmortem.
+
+![Diagrama de secvență pentru închiderea unui incident](docs/diagrame/05-secventa-inchidere.png)
+
+### Componente și desfășurare
+
+Modulele frontend-ului și ale backend-ului și dependențele dintre ele (instrucțiunile `import`):
 
 ![Diagrama de componente](docs/diagrame/07-componente.png)
 
-Diagrama de desfășurare arată containerele din `compose.yaml`, porturile lor și Ollama (modelul `gpt-oss:20b`, din `.env`).
+Containerele din `compose.yaml`, porturile lor și Ollama (modelul `gpt-oss:20b`, din `.env`):
 
 ![Diagrama de desfășurare](docs/diagrame/07-desfasurare.png)
 
 ## Ollama
 
-Instalați Ollama de pe https://ollama.com și descărcați modelul implicit:
+Instalați Ollama de pe https://ollama.com și descărcați modelul folosit de proiect (setat în `.env`, `OLLAMA_MODEL`):
 
 ```bash
-ollama pull qwen2.5:1.5b
+ollama pull gpt-oss:20b
 ```
 
+Modelul are aproximativ 13 GB. Pe un calculator mai slab puteți pune în `.env` un model mai mic (de exemplu `qwen2.5:1.5b`, modelul implicit al template-ului), apoi rulați `docker compose up -d`.
+
 Pe Linux, Ollama trebuie să accepte conexiuni din Docker: porniți-l cu `OLLAMA_HOST=0.0.0.0 ollama serve`.
-Pagina **Acasă** a aplicației arată dacă backend-ul și Ollama funcționează.
+Pagina **Starea sistemului** și bara de sus a aplicației arată dacă backend-ul și Ollama funcționează.
 
 ## Îndrumarele de laborator
 
