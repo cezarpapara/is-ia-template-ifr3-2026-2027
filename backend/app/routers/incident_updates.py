@@ -21,7 +21,7 @@ def list_updates(incident_id: int, db: Session = Depends(get_db)):
 # POST /api/incidents/{incident_id}/updates - adauga o actualizare (raspuns 201; 409 daca incidentul este inchis)
 @router.post("", response_model=IncidentUpdateRead, status_code=201)
 def create_update(incident_id: int, data: IncidentUpdateCreate, db: Session = Depends(get_db)):
-    check_not_closed(get_incident_or_404(incident_id, db))
+    check_not_closed(get_incident_or_404(incident_id, db, for_update=True))
     update = IncidentUpdate(incident_id=incident_id, **data.model_dump())
     db.add(update)
     db.commit()

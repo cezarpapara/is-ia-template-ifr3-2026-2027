@@ -1,0 +1,57 @@
+# Isolated, disposable databases. Never mounts docker/postgres/data or loads .env.
+name: oncall-tests
+
+x-postgres: &postgres
+  image: postgres:17-alpine
+  environment:
+    POSTGRES_USER: oncall_test
+    POSTGRES_PASSWORD: oncall_test
+    POSTGRES_DB: oncall_test
+    PGDATA: /var/lib/postgresql/data/pgdata
+  tmpfs:
+    - /var/lib/postgresql/data
+  healthcheck:
+    test: ["CMD-SHELL", "pg_isready -U oncall_test -d oncall_test"]
+    interval: 2s
+    timeout: 3s
+    retries: 20
+
+x-backend: &backend
+  build:
+    context: ./backend
+    dockerfile: ../docker/python/Dockerfile
+
+services:
+  postgres:
+    <<: *postgres
+
+  tests:
+    <<: *backend
+    environment:
+      TEST_DATABASE_URL: postgresql+psycopg://oncall_test:oncall_test@postgres:5432/oncall_test
+      OLLAMA_URL: http://127.0.0.1:9
+    command: ["sh", "-c", "pip install --no-cache-dir -r requirements-dev.txt && python -m pytest"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  e2e-postgres:
+    <<: *postgres
+
+  e2e-api:
+    <<: *backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://oncall_test:oncall_test@e2e-postgres:5432/oncall_test
+      CORS_ORIGINS: http://127.0.0.1:15173
+      OLLAMA_URL: http://127.0.0.1:9
+    command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+    ports:
+      - "127.0.0.1:18000:8000"
+    depends_on:
+      e2e-postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=2)"]
+      interval: 2s
+      timeout: 3s
+      retries: 20

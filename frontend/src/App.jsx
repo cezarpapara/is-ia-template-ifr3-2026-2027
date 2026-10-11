@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
 import { Navigate, NavLink, Route, Routes } from 'react-router'
-import { api } from './api.js'
+import { formatDate } from './api.js'
+import { useSystemHealth } from './useSystemHealth.js'
 import HomePage from './pages/HomePage.jsx'
 import IncidentsPage from './pages/IncidentsPage.jsx'
 import IncidentDetailPage from './pages/IncidentDetailPage.jsx'
@@ -10,28 +10,16 @@ import './App.css'
 
 // Starea sistemului, in dreapta barei de sus: backend-ul (cu baza de date) si modelul din Ollama
 function SystemStatus() {
-  const [backendOk, setBackendOk] = useState(null)
-  const [ai, setAi] = useState(null)
-
-  useEffect(() => {
-    api.getHealth()
-      .then(() => setBackendOk(true))
-      .catch(() => setBackendOk(false))
-    api.getAiStatus()
-      .then((data) => setAi(data))
-      .catch(() => setAi({ ollama: 'indisponibil', model: '-', models: [] }))
-  }, [])
-
-  // Ollama ruleaza si modelul ales este descarcat
-  const modelReady = ai?.ollama === 'disponibil' &&
-    (ai.models.includes(ai.model) || ai.models.includes(`${ai.model}:latest`))
-  // Gri cat timp se verifica, verde daca merge, rosu daca nu
-  const lamp = (ok, loaded) => (loaded ? (ok ? 'lamp-clear' : 'lamp-down') : '')
+  const { health, ai, checking, checkedAt, modelReady, refresh } = useSystemHealth()
+  const lamp = (ok) => checking ? '' : ok ? 'lamp-clear' : 'lamp-down'
+  const label = (ok) => checking ? 'se verifică' : ok ? 'disponibil' : 'indisponibil'
 
   return (
-    <div className="system">
-      <span><span className={`lamp lamp-small ${lamp(backendOk, backendOk !== null)}`} aria-hidden="true" />API și baza de date</span>
-      <span><span className={`lamp lamp-small ${lamp(modelReady, ai !== null)}`} aria-hidden="true" />Ollama ({ai?.model ?? '...'})</span>
+    <div className="system" aria-label="Stare conexiuni">
+      <span role="status"><span className={`lamp lamp-small ${lamp(health)}`} aria-hidden="true" />API și baza de date: {label(health)}</span>
+      <span role="status"><span className={`lamp lamp-small ${lamp(modelReady)}`} aria-hidden="true" />Ollama ({ai?.model ?? '…'}): {label(modelReady)}</span>
+      <span className="system-checked">Ultima verificare: {formatDate(checkedAt)}</span>
+      <button type="button" className="status-refresh" aria-label="Actualizează conexiunile" disabled={checking} onClick={refresh}>Verifică</button>
     </div>
   )
 }

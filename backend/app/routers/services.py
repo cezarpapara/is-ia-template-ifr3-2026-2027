@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import and_, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -19,12 +20,10 @@ def list_services(db: Session = Depends(get_db)):
         .group_by(Service.id)
         .order_by(Service.id)
     )
-    result = []
-    for service, open_count in db.execute(query):
-        item = ServiceRead.model_validate(service)
-        item.open_incident_count = open_count
-        result.append(item)
-    return result
+    return [
+        ServiceRead.model_validate(service).model_copy(update={"open_incident_count": open_count})
+        for service, open_count in db.execute(query)
+    ]
 
 
 # POST /api/services - adauga un serviciu (409 daca numele exista deja)
@@ -36,6 +35,15 @@ def create_service(data: ServiceCreate, db: Session = Depends(get_db)):
 
     service = Service(**data.model_dump())
     db.add(service)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError as error:
+        db.rollback()
+        # Doua cereri pot trece simultan de verificarea de mai sus; unicitatea decide in DB.
+        if getattr(error.orig, "sqlstate", None) == "23505":
+            raise HTTPException(
+                status_code=409, detail=f"Exista deja un serviciu cu numele '{data.name}'."
+            ) from error
+        raise
     db.refresh(service)
     return service

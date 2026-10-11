@@ -16,7 +16,7 @@ Backend-ul, frontend-ul și baza de date rulează în containere Docker; nu este
 ```bash
 git clone https://github.com/cezarpapara/is-ia-template-ifr3-2026-2027.git
 cd is-ia-template-ifr3-2026-2027
-git checkout -b nume.prenume
+git checkout -b feat/nume-prenume
 docker compose up -d --build
 ```
 
@@ -45,6 +45,11 @@ docs/diagrame/    diagramele UML (.excalidraw + .png; .drawio = exemplele din te
 Dacă un port este ocupat sau vreți alt model Ollama, modificați valoarea în `.env`, apoi rulați `docker compose up -d`.
 Pentru a porni cu o bază de date goală: `docker compose down`, ștergeți conținutul folderului `docker/postgres/data` (fără fișierul `.gitkeep`), apoi `docker compose up -d`.
 
+Porturile publicate sunt legate de `127.0.0.1`: aplicația este destinată lucrului local, fără autentificare.
+După actualizarea codului sau a dependențelor, rulați `docker compose up -d --build` pentru a aplica migrările și configurația nouă. Frontend-ul instalează exact versiunile din `package-lock.json`, prin `npm ci`.
+
+Migrarea istorică `0003` **șterge tabelele `project`, `task` și `comment`, inclusiv datele lor**, înainte de a crea modelul de incidente. Faceți o copie de siguranță dacă folosiți încă date din template. Migrarea `0004` adaugă restricții și indici; dacă găsește date incompatibile, se oprește cu identificatorii înregistrărilor de corectat, fără să le rescrie automat.
+
 ## Diagrame UML
 
 Diagramele se află în `docs/diagrame/`; sursa fiecărei imagini este fișierul `.excalidraw` cu același nume. Toate descriu codul de pe acest branch.
@@ -68,7 +73,7 @@ Fiecare caz de utilizare se regăsește în aplicație (matricea de trasabilitat
 | Generează draft cu IA | `POST /api/ai/incidents/{id}/postmortem` | `ai_postmortem()` | Detaliu incident: „Generează draft cu IA” |
 | Șterge un incident raportat greșit | `DELETE /api/incidents/{id}` | `delete_incident()` | Incidente: butonul de ștergere (`window.confirm`) |
 | Întreabă asistentul IA | `POST /api/ai/chat` | `ai_chat()` | Asistent IA (`/asistent`) |
-| Gestionează serviciile | `GET`, `POST /api/services` | `list_services()`, `create_service()` | Incidente: tabloul serviciilor (adăugarea, din Swagger) |
+| Gestionează serviciile | `GET`, `POST /api/services` | `list_services()`, `create_service()` | Incidente: tabloul serviciilor și „Adaugă serviciu” |
 
 ### Clase
 
@@ -82,6 +87,12 @@ Ciclul de viață al unui incident. Fiecare tranziție este verificată în `bac
 
 ![Diagrama de stări a incidentului](docs/diagrame/03-stari-incident.png)
 
+### Activități
+
+Fluxul „Generează draft de postmortem cu IA”, pe culoare (pagina, backend-ul, Ollama), cu ramificațiile pentru erorile din `backend/app/routers/ai.py`: 404 (incidentul nu există), 503 (Ollama oprit, timeout sau model lipsă) și 502 (răspuns în format greșit). Propunerea apare separat: o verificați, apăsați „Aplică draftul”, o editați și apoi o salvați.
+
+![Diagrama de activități pentru draftul de postmortem](docs/diagrame/04-activitati-postmortem-ia.png)
+
 ### Secvență
 
 Cazul „Închide incidentul”, de la clic până la PostgreSQL și înapoi, cu ramura de eroare 400 pentru un incident SEV1/SEV2 fără postmortem.
@@ -90,7 +101,7 @@ Cazul „Închide incidentul”, de la clic până la PostgreSQL și înapoi, cu
 
 ### Componente și desfășurare
 
-Modulele frontend-ului și ale backend-ului și dependențele dintre ele (instrucțiunile `import`):
+Principalele module frontend/backend și dependențele dintre ele; paginile folosesc și hook-urile comune pentru mutații și starea conexiunilor:
 
 ![Diagrama de componente](docs/diagrame/07-componente.png)
 
@@ -110,6 +121,14 @@ Modelul are aproximativ 13 GB. Pe un calculator mai slab puteți pune în `.env`
 
 Pe Linux, Ollama trebuie să accepte conexiuni din Docker: porniți-l cu `OLLAMA_HOST=0.0.0.0 ollama serve`.
 Pagina **Starea sistemului** și bara de sus a aplicației arată dacă backend-ul și Ollama funcționează.
+
+## Verificare și evaluare IA
+
+[Ghidul de verificare](docs/verificare.md) descrie testele unitare, integrarea PostgreSQL, testele în browser, pragul de acoperire de 80% și mediul separat de test. Workflow-ul GitHub Actions din `.github/workflows/ci.yml` rulează aceste verificări la push și pull request.
+
+Draftul IA păstrează contractul `cauza`, `impact`, `actiuni`, cu 2–4 acțiuni. Promptul cere diferențierea faptelor, ipotezelor și informațiilor lipsă; datele incidentului sunt tratate ca material de analizat. Validarea structurii JSON nu demonstrează corectitudinea concluziilor: evaluarea include și o rubrică de verificare umană.
+
+Textul de postmortem nesalvat se recuperează în aceeași filă a browserului după reîncărcare. O propunere IA nu înlocuiește automat textul, iar un răspuns întârziat la salvare nu elimină editările mai noi.
 
 ## Îndrumarele de laborator
 

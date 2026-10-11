@@ -13,9 +13,26 @@ STATUS_TIMEOUT = 5
 CHAT_TIMEOUT = 180
 
 
-# Eroare cu mesaj clar, pe care routerul o transforma in raspuns 503
 class LLMError(Exception):
-    pass
+    """503 pentru indisponibilitate; 502 pentru un protocol Ollama invalid."""
+
+    def __init__(self, message: str, status_code: int = 503):
+        super().__init__(message)
+        self.status_code = status_code
+
+
+def _invalid_response() -> LLMError:
+    return LLMError("Ollama a trimis un raspuns invalid. Incercati din nou.", status_code=502)
+
+
+def _response_object(response: httpx.Response) -> dict:
+    try:
+        data = response.json()
+    except (ValueError, UnicodeDecodeError) as error:
+        raise _invalid_response() from error
+    if not isinstance(data, dict) or "error" in data:
+        raise _invalid_response()
+    return data
 
 
 def _not_running_message() -> str:
@@ -43,7 +60,15 @@ def list_models() -> list[str]:
     except httpx.HTTPError:
         raise LLMError(_not_running_message())
 
-    return [item["name"] for item in response.json().get("models", [])]
+    models = _response_object(response).get("models")
+    if not isinstance(models, list) or any(
+        not isinstance(item, dict)
+        or not isinstance(item.get("name"), str)
+        or not item["name"].strip()
+        for item in models
+    ):
+        raise _invalid_response()
+    return [item["name"] for item in models]
 
 
 def is_downloaded(model: str, models: list[str]) -> bool:
@@ -78,10 +103,13 @@ def chat(messages: list[dict], model: str | None = None, json_format: bool = Fal
     if response.status_code == 404:
         raise LLMError(_not_downloaded_message(model))
     if response.status_code != 200:
-        try:
-            details = response.json().get("error", response.text)
-        except ValueError:
-            details = response.text
-        raise LLMError(f"Ollama a raspuns cu eroarea {response.status_code}: {details}")
+        # Corpul erorii este date externe: poate fi HTML/JSON arbitrar sau contine date interne.
+        raise LLMError(f"Ollama a raspuns cu eroarea {response.status_code}.")
 
-    return response.json()["message"]["content"]
+    message = _response_object(response).get("message")
+    if not isinstance(message, dict):
+        raise _invalid_response()
+    content = message.get("content")
+    if not isinstance(content, str) or not content.strip():
+        raise _invalid_response()
+    return content

@@ -22,7 +22,8 @@ async function request(path, options = {}) {
       headers: { 'Content-Type': 'application/json' },
       ...options,
     })
-  } catch {
+  } catch (err) {
+    if (err.name === 'AbortError') throw err
     throw new Error(`Backend-ul nu raspunde la ${API_URL}.`)
   }
 
@@ -35,6 +36,7 @@ async function request(path, options = {}) {
   if (!response.ok) {
     throw new Error(errorMessage(data, response.status))
   }
+  if (data === null) throw new Error('Răspuns invalid de la backend.')
   return data
 }
 
@@ -48,20 +50,20 @@ export const api = {
   url: API_URL,
 
   // GET /api/health
-  getHealth: () => request('/api/health'),
+  getHealth: (options) => request('/api/health', options),
 
   // GET /api/services
-  getServices: () => request('/api/services'),
+  getServices: (options) => request('/api/services', options),
 
   // POST /api/services
   createService: (service) =>
     request('/api/services', { method: 'POST', body: JSON.stringify(service) }),
 
   // GET /api/incidents?service_id=&status=&severity=
-  getIncidents: (filters = {}) => request(`/api/incidents${queryString(filters)}`),
+  getIncidents: (filters = {}, options) => request(`/api/incidents${queryString(filters)}`, options),
 
   // GET /api/incidents/{id}
-  getIncident: (id) => request(`/api/incidents/${id}`),
+  getIncident: (id, options) => request(`/api/incidents/${id}`, options),
 
   // POST /api/incidents
   createIncident: (incident) =>
@@ -75,21 +77,21 @@ export const api = {
   deleteIncident: (id) => request(`/api/incidents/${id}`, { method: 'DELETE' }),
 
   // GET /api/incidents/{id}/updates
-  getIncidentUpdates: (id) => request(`/api/incidents/${id}/updates`),
+  getIncidentUpdates: (id, options) => request(`/api/incidents/${id}/updates`, options),
 
   // POST /api/incidents/{id}/updates
   addIncidentUpdate: (id, update) =>
     request(`/api/incidents/${id}/updates`, { method: 'POST', body: JSON.stringify(update) }),
 
   // GET /api/ai/status
-  getAiStatus: () => request('/api/ai/status'),
+  getAiStatus: (options) => request('/api/ai/status', options),
 
   // POST /api/ai/chat
   chat: (message, system) =>
     request('/api/ai/chat', { method: 'POST', body: JSON.stringify({ message, system }) }),
 
   // POST /api/ai/incidents/{id}/postmortem
-  draftPostmortem: (id) => request(`/api/ai/incidents/${id}/postmortem`, { method: 'POST' }),
+  draftPostmortem: (id, options) => request(`/api/ai/incidents/${id}/postmortem`, { ...options, method: 'POST' }),
 }
 
 // Textele afisate pentru statusuri si severitati

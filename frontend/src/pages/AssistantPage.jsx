@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useMutation } from '../useMutation.js'
 import { api } from '../api.js'
 
 // Exemple de intrebari, puse pe butoane
@@ -15,25 +16,18 @@ const SYSTEM_PROMPT = 'Esti un asistent pentru o echipa on-call care gestioneaza
 function AssistantPage() {
   const [message, setMessage] = useState('')
   const [answer, setAnswer] = useState(null)
-  const [thinking, setThinking] = useState(false)
   const [error, setError] = useState(null)
+  const { pending: thinking, run } = useMutation(setError)
 
   // POST /api/ai/chat
-  async function ask(text) {
-    if (!text.trim()) {
-      return
-    }
-    setThinking(true)
-    setError(null)
-    setAnswer(null)
-    try {
-      const data = await api.chat(text, SYSTEM_PROMPT)
+  function ask(text) {
+    if (!text.trim()) return
+    run(async () => {
+      setError(null)
+      setAnswer(null)
+      const data = await api.chat(text.trim(), SYSTEM_PROMPT)
       setAnswer(data)
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setThinking(false)
-    }
+    })
   }
 
   function handleSubmit(event) {
@@ -65,6 +59,7 @@ function AssistantPage() {
               onChange={(event) => setMessage(event.target.value)}
               placeholder="Scrieți o întrebare..."
               rows={3}
+              maxLength={10000}
               required
             />
           </label>

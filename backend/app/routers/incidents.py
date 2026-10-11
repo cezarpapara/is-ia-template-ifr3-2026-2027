@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -24,8 +24,12 @@ POSTMORTEM_REQUIRED = {1, 2}
 
 
 # Functie ajutatoare: gaseste incidentul sau raspunde cu 404
-def get_incident_or_404(incident_id: int, db: Session) -> Incident:
-    incident = db.get(Incident, incident_id)
+def get_incident_or_404(incident_id: int, db: Session, *, for_update: bool = False) -> Incident:
+    query = select(Incident).where(Incident.id == incident_id)
+    if for_update:
+        # Lock-ul ramane pana la commit/rollback. Reincarca si obiectele deja citite in sesiune.
+        query = query.with_for_update().execution_options(populate_existing=True)
+    incident = db.scalar(query)
     if incident is None:
         raise HTTPException(status_code=404, detail=f"Incidentul {incident_id} nu exista.")
     return incident
@@ -82,15 +86,15 @@ def check_severity_change(incident: Incident, changes: dict) -> None:
 
 
 # Actiunile tranzitiilor: momentul confirmarii, al rezolvarii si redeschiderea
-def apply_status(incident: Incident, new: str) -> None:
+def status_changes(current: str, new: str) -> dict:
     now = datetime.now(timezone.utc)
     if new == "confirmat":
-        incident.acknowledged_at = now
-    elif new == "rezolvat":
-        incident.resolved_at = now
-    elif new == "in_lucru" and incident.status == "rezolvat":
-        incident.resolved_at = None
-    incident.status = new
+        return {"status": new, "acknowledged_at": now}
+    if new == "rezolvat":
+        return {"status": new, "resolved_at": now}
+    if new == "in_lucru" and current == "rezolvat":
+        return {"status": new, "resolved_at": None}
+    return {"status": new}
 
 
 # GET /api/incidents?service_id=1&status=deschis&severity=1 - lista incidentelor, cele noi primele
@@ -131,20 +135,20 @@ def create_incident(data: IncidentCreate, db: Session = Depends(get_db)):
 # PATCH /api/incidents/{id} - modifica doar campurile trimise (ex. {"status": "confirmat"})
 @router.patch("/{incident_id}", response_model=IncidentRead)
 def update_incident(incident_id: int, data: IncidentPatch, db: Session = Depends(get_db)):
-    incident = get_incident_or_404(incident_id, db)
+    incident = get_incident_or_404(incident_id, db, for_update=True)
     check_not_closed(incident)
-    changes = data.model_dump(exclude_unset=True, exclude_none=True)
+    changes = data.model_dump(exclude_unset=True)
     check_severity_change(incident, changes)
-    new_status = changes.pop("status", None)
+    new_status = changes.get("status")
     if new_status is not None:
         check_transition(incident.status, new_status)
         if new_status == "inchis":
             check_can_close(changes.get("severity", incident.severity), changes.get("postmortem", incident.postmortem))
 
-    for field, value in changes.items():
-        setattr(incident, field, value)
     if new_status is not None and new_status != incident.status:
-        apply_status(incident, new_status)
+        changes = {**changes, **status_changes(incident.status, new_status)}
+    if changes:
+        db.execute(update(Incident).where(Incident.id == incident_id).values(**changes))
     db.commit()
     db.refresh(incident)
     return incident
@@ -153,7 +157,7 @@ def update_incident(incident_id: int, data: IncidentPatch, db: Session = Depends
 # DELETE /api/incidents/{id} - doar un incident "deschis" (raportat din greseala) se poate sterge (raspuns 204)
 @router.delete("/{incident_id}", status_code=204)
 def delete_incident(incident_id: int, db: Session = Depends(get_db)):
-    incident = get_incident_or_404(incident_id, db)
+    incident = get_incident_or_404(incident_id, db, for_update=True)
     if incident.status != "deschis":
         raise HTTPException(
             status_code=409,

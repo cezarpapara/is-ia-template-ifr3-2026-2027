@@ -4,11 +4,11 @@ FROM node:24-alpine
 
 WORKDIR /app
 
-# Instalam dependintele din package.json (pentru o prima pornire rapida)
+# Instalam exact dependintele din package-lock.json.
 COPY package.json package-lock.json ./
-RUN npm install
+RUN npm ci
 
 EXPOSE 5173
 
-# La fiecare pornire: instaleaza pachetele noi (daca ati adaugat) si porneste Vite in modul dev
-CMD ["sh", "-c", "npm install && npm run dev -- --host 0.0.0.0"]
+# Volumul node_modules este sincronizat cu lockfile-ul la fiecare pornire.
+CMD ["sh", "-c", "npm ci && npm run dev -- --host 0.0.0.0"]

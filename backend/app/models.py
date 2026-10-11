@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -12,6 +12,7 @@ from app.database import Base
 
 class Service(Base):
     __tablename__ = "service"
+    __table_args__ = (CheckConstraint("tier BETWEEN 1 AND 3", name="ck_service_tier"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(100), unique=True)
@@ -30,6 +31,18 @@ class Service(Base):
 
 class Incident(Base):
     __tablename__ = "incident"
+    __table_args__ = (
+        CheckConstraint("severity BETWEEN 1 AND 3", name="ck_incident_severity"),
+        CheckConstraint(
+            "status IN ('deschis', 'confirmat', 'in_lucru', 'rezolvat', 'inchis')",
+            name="ck_incident_status",
+        ),
+        CheckConstraint(
+            "status <> 'inchis' OR severity = 3 OR "
+            "(postmortem IS NOT NULL AND postmortem ~ '[^[:space:]]')",
+            name="ck_incident_closed_postmortem",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     title: Mapped[str] = mapped_column(String(200))
@@ -43,7 +56,7 @@ class Incident(Base):
     opened_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     acknowledged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    service_id: Mapped[int] = mapped_column(ForeignKey("service.id", ondelete="CASCADE"))
+    service_id: Mapped[int] = mapped_column(ForeignKey("service.id", ondelete="CASCADE"), index=True)
 
     service: Mapped[Service] = relationship(back_populates="incidents")
     # Relatie 1-n: cronologia incidentului (stearsa odata cu incidentul)
@@ -62,6 +75,6 @@ class IncidentUpdate(Base):
     text: Mapped[str] = mapped_column(Text)
     author: Mapped[str] = mapped_column(String(100))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    incident_id: Mapped[int] = mapped_column(ForeignKey("incident.id", ondelete="CASCADE"))
+    incident_id: Mapped[int] = mapped_column(ForeignKey("incident.id", ondelete="CASCADE"), index=True)
 
     incident: Mapped[Incident] = relationship(back_populates="updates")

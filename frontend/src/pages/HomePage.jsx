@@ -1,26 +1,9 @@
-import { useEffect, useState } from 'react'
-import { api } from '../api.js'
+import { api, formatDate } from '../api.js'
+import { useSystemHealth } from '../useSystemHealth.js'
 
 // Pagina Starea sistemului: verifica daca backend-ul (cu baza de date) si Ollama raspund
 function HomePage() {
-  const [health, setHealth] = useState(null)
-  const [healthError, setHealthError] = useState(null)
-  const [ai, setAi] = useState(null)
-  const [aiError, setAiError] = useState(null)
-
-  useEffect(() => {
-    api.getHealth()
-      .then((data) => setHealth(data))
-      .catch((err) => setHealthError(err.message))
-
-    api.getAiStatus()
-      .then((data) => setAi(data))
-      .catch((err) => setAiError(err.message))
-  }, [])
-
-  // Ollama ruleaza si modelul ales este descarcat
-  const modelReady = ai?.ollama === 'disponibil' &&
-    (ai.models.includes(ai.model) || ai.models.includes(`${ai.model}:latest`))
+  const { health, ai, healthError, aiError, checking, checkedAt, modelReady, refresh } = useSystemHealth()
 
   return (
     <div className="page">
@@ -29,7 +12,9 @@ function HomePage() {
           <h1>Starea sistemului</h1>
           <p className="subtitle">Frontend React conectat la un backend FastAPI, la PostgreSQL și la un model de limbaj local (Ollama)</p>
         </div>
+        <button type="button" className="button button-secondary" onClick={refresh} disabled={checking}>Actualizează starea</button>
       </header>
+      <p className="muted" role="status">{checking ? 'Se verifică starea sistemului...' : `Ultima verificare: ${formatDate(checkedAt)}`}</p>
 
       <section className="card">
         <h2>Backend și baza de date</h2>
@@ -65,11 +50,12 @@ function HomePage() {
         {aiError && <div className="notice notice-error" role="alert"><p>{aiError}</p></div>}
 
         {ai && (
-          <div className={`notice ${modelReady ? 'notice-ok' : 'notice-error'}`}>
+          <div role={modelReady ? undefined : 'alert'} className={`notice ${modelReady ? 'notice-ok' : 'notice-error'}`}>
             <div>
+              <p><strong>{modelReady ? 'Model disponibil' : 'Model indisponibil'}</strong></p>
               <p><strong>Ollama:</strong> {ai.ollama}</p>
               <p><strong>Model folosit:</strong> <code>{ai.model}</code></p>
-              {ai.models.length > 0 && <p><strong>Modele descărcate:</strong> {ai.models.join(', ')}</p>}
+              {ai.models?.length > 0 && <p><strong>Modele descărcate:</strong> {ai.models.join(', ')}</p>}
               <p>{ai.detalii}</p>
             </div>
           </div>

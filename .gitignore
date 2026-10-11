@@ -4,6 +4,11 @@ __pycache__/
 .venv/
 venv/
 .pytest_cache/
+.coverage
+htmlcov/
+coverage/
+playwright-report/
+test-results/
 
 # Node.js / Vite
 node_modules/

@@ -558,6 +558,7 @@ textarea {
 }
 
 .table-scroll {
+  position: relative;
   overflow-x: auto;
 }
 
@@ -962,3 +963,8 @@ code {
     animation: none;
   }
 }
+
+
+.draft-preview { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
+.system-checked { font-size: 12px; }
+.status-refresh { border: 1px solid var(--rule); border-radius: 4px; background: var(--surface); color: var(--ink); min-height: 32px; }

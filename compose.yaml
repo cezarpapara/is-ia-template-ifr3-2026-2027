@@ -28,7 +28,7 @@ services:
       # baza de date se scrie in subfolderul pgdata (vezi volumul de mai jos)
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
-      - "${POSTGRES_PORT}:5432"
+      - "127.0.0.1:${POSTGRES_PORT}:5432"
     volumes:
       # datele bazei de date stau in proiect, in docker/postgres/data
       # (folderul este in .gitignore, deci nu ajunge pe GitHub)
@@ -55,7 +55,7 @@ services:
       # host.docker.internal = calculatorul vostru, vazut din container
       - "host.docker.internal:host-gateway"
     ports:
-      - "${BACKEND_PORT}:8000"
+      - "127.0.0.1:${BACKEND_PORT}:8000"
     volumes:
       # codul din backend apare in container in /app;
       # orice modificare salvata se vede imediat (uvicorn --reload)
@@ -74,7 +74,7 @@ services:
       # adresa backend-ului, asa cum o vede browserul (import.meta.env.VITE_API_URL)
       VITE_API_URL: http://localhost:${BACKEND_PORT}
     ports:
-      - "${FRONTEND_PORT}:5173"
+      - "127.0.0.1:${FRONTEND_PORT}:5173"
     volumes:
       # codul din frontend apare in container in /app;
       # modificarile salvate se vad imediat in browser

@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { api, formatDate, SEVERITIES, STATUSES, TRANSITIONS } from '../api.js'
+import { useMutation } from '../useMutation.js'
+import ServiceForm from './ServiceForm.jsx'
 import { IconPlus, IconTrash, plural, SeverityTag, StatusTrack } from '../ui.jsx'
 
-const emptyForm = { title: '', service_id: '', severity: '2' }
+const emptyForm = { title: '', description: '', service_id: '', severity: '2' }
 
 // Filele de deasupra tabelului: cate incidente sunt in fiecare stare (eticheta la plural)
 const TABS = [
@@ -17,45 +19,45 @@ const TABS = [
 // Pagina Incidente: tabloul serviciilor, raportare, filtrare, schimbarea statusului si stergere
 function IncidentsPage() {
   const [services, setServices] = useState([])
-  const [allIncidents, setAllIncidents] = useState([])
+  const [allIncidents, setAllIncidents] = useState(null)
   const [incidents, setIncidents] = useState([])
   const [filters, setFilters] = useState({ service_id: '', status: '', severity: '' })
   const [form, setForm] = useState(emptyForm)
   const [reportOpen, setReportOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [listError, setListError] = useState(null)
+  const [overviewError, setOverviewError] = useState(null)
+  const [serviceError, setServiceError] = useState(null)
+  const [serviceOpen, setServiceOpen] = useState(false)
+  const [revision, setRevision] = useState(0)
+  const { pending, run } = useMutation(setError)
   const titleInput = useRef(null)
 
-  // GET /api/incidents cu filtrele alese (lista din tabel)
-  function loadIncidents() {
+  useEffect(() => {
+    const controller = new AbortController()
     setLoading(true)
-    api.getIncidents(filters)
-      .then((data) => {
-        setIncidents(data)
-        setError(null)
-      })
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false))
-  }
-
-  // GET /api/incidents fara filtre si GET /api/services: tabloul serviciilor si numerele din file
-  function loadOverview() {
-    api.getIncidents()
-      .then((data) => setAllIncidents(data))
-      .catch((err) => setError(err.message))
-    api.getServices()
-      .then((data) => setServices(data))
-      .catch((err) => setError(err.message))
-  }
+    setListError(null)
+    api.getIncidents(filters, { signal: controller.signal })
+      .then((data) => { if (!controller.signal.aborted) setIncidents(data) })
+      .catch((err) => { if (!controller.signal.aborted) setListError(err.message) })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false) })
+    return () => controller.abort()
+  }, [filters, revision])
 
   useEffect(() => {
-    loadOverview()
-  }, [])
-
-  // Lista se reincarca de fiecare data cand se schimba un filtru
-  useEffect(() => {
-    loadIncidents()
-  }, [filters])
+    const controller = new AbortController()
+    setAllIncidents(null)
+    setOverviewError(null)
+    setServiceError(null)
+    api.getIncidents(undefined, { signal: controller.signal })
+      .then((data) => { if (!controller.signal.aborted) setAllIncidents(data) })
+      .catch((err) => { if (!controller.signal.aborted) setOverviewError(err.message) })
+    api.getServices({ signal: controller.signal })
+      .then((data) => { if (!controller.signal.aborted) setServices(data) })
+      .catch((err) => { if (!controller.signal.aborted) setServiceError(err.message) })
+    return () => controller.abort()
+  }, [revision])
 
   // Formularul primeste focusul cand se deschide
   useEffect(() => {
@@ -65,15 +67,14 @@ function IncidentsPage() {
   }, [reportOpen])
 
   function refresh() {
-    loadIncidents()
-    loadOverview()
+    setRevision((value) => value + 1)
   }
 
   function serviceName(id) {
     return services.find((service) => service.id === id)?.name ?? `Serviciul ${id}`
   }
 
-  const active = allIncidents.filter((incident) => incident.status !== 'inchis')
+  const active = (allIncidents ?? []).filter((incident) => incident.status !== 'inchis')
 
   // Cel mai grav incident activ al unui serviciu (1 = SEV1); null daca nu are incidente active
   function worstSeverity(serviceId) {
@@ -90,43 +91,36 @@ function IncidentsPage() {
   }
 
   // POST /api/incidents - incidentul nou porneste din starea "deschis"
-  async function handleSubmit(event) {
+  function handleSubmit(event) {
     event.preventDefault()
-    try {
+    if (!form.title.trim() || !form.service_id) return
+    run(async () => {
+      setError(null)
       await api.createIncident({
-        title: form.title,
-        service_id: Number(form.service_id),
-        severity: Number(form.severity),
+        title: form.title.trim(), description: form.description.trim() || null,
+        service_id: Number(form.service_id), severity: Number(form.severity),
       })
       setForm(emptyForm)
       setReportOpen(false)
       refresh()
-    } catch (err) {
-      setError(err.message)
-    }
+    })
   }
 
-  // PATCH /api/incidents/{id} - se trimite doar statusul nou
-  async function handleStatusChange(incident, status) {
-    try {
+  function handleStatusChange(incident, status) {
+    run(async () => {
+      setError(null)
       await api.updateIncident(incident.id, { status })
       refresh()
-    } catch (err) {
-      setError(err.message)
-    }
+    })
   }
 
-  // DELETE /api/incidents/{id}, dupa confirmare (doar incidentele in starea "deschis")
-  async function handleDelete(incident) {
-    if (!window.confirm(`Ștergeți incidentul "${incident.title}"? Ștergeți doar incidentele raportate din greșeală.`)) {
-      return
-    }
-    try {
+  function handleDelete(incident) {
+    if (!window.confirm(`Ștergeți incidentul "${incident.title}"? Ștergeți doar incidentele raportate din greșeală.`)) return
+    run(async () => {
+      setError(null)
       await api.deleteIncident(incident.id)
       refresh()
-    } catch (err) {
-      setError(err.message)
-    }
+    })
   }
 
   return (
@@ -135,12 +129,16 @@ function IncidentsPage() {
         <div>
           <h1>Incidente</h1>
           <p className="subtitle">
-            {plural(active.length, 'incident activ', 'incidente active')} pe {plural(services.length, 'serviciu', 'servicii')}
+            {allIncidents && !serviceError ? `${plural(active.length, 'incident activ', 'incidente active')} pe ${plural(services.length, 'serviciu', 'servicii')}` : 'Sumarul serviciilor nu este disponibil.'}
           </p>
         </div>
+        <div className="actions">
+        <button type="button" className="button button-secondary" onClick={() => setServiceOpen(true)} disabled={pending || serviceOpen} aria-expanded={serviceOpen}>Adaugă serviciu</button>
+        <button type="button" className="button button-secondary" onClick={refresh} disabled={pending}>Actualizează lista</button>
         <button
           type="button"
           className="button"
+          disabled={pending}
           aria-expanded={reportOpen}
           aria-controls="report"
           onClick={() => setReportOpen(!reportOpen)}
@@ -148,6 +146,7 @@ function IncidentsPage() {
           <IconPlus />
           Raportează incident
         </button>
+        </div>
       </header>
 
       {/* Tabloul serviciilor: lampa arata cel mai grav incident activ (verde = niciunul) */}
@@ -156,12 +155,12 @@ function IncidentsPage() {
           const worst = worstSeverity(service.id)
           return (
             <article key={service.id} className="board-tile">
-              <span className={`lamp ${worst ? `lamp-sev-${worst}` : 'lamp-clear'}`} style={{ '--i': index }} aria-hidden="true" />
+              <span className={`lamp ${allIncidents && !serviceError ? (worst ? `lamp-sev-${worst}` : 'lamp-clear') : ''}`} style={{ '--i': index }} aria-hidden="true" />
               <h2 className="board-name">{service.name}</h2>
               <p className="board-owner">{service.owner}, nivel {service.tier}</p>
               <p className="board-state">
-                {worst
-                  ? <>{plural(service.open_incident_count, 'incident activ', 'incidente active')}, cel mai grav <strong>SEV{worst}</strong></>
+                {!allIncidents || serviceError ? 'Stare indisponibilă' : worst
+                  ? <>{plural(active.filter((item) => item.service_id === service.id).length, 'incident activ', 'incidente active')}, cel mai grav <strong>SEV{worst}</strong></>
                   : 'Fără incidente active'}
               </p>
             </article>
@@ -169,17 +168,22 @@ function IncidentsPage() {
         })}
       </section>
 
+      {serviceOpen && <ServiceForm onCreated={(created) => { setServices((current) => [...current, created]); setServiceOpen(false); refresh() }} onCancel={() => setServiceOpen(false)} />}
       {reportOpen && (
         <section id="report" className="card report" aria-labelledby="report-title">
           <h2 id="report-title">Raportează un incident</h2>
           <form onSubmit={handleSubmit} className="report-form">
             <label className="field field-wide">
               Ce nu funcționează?
-              <input ref={titleInput} name="title" value={form.title} onChange={handleFormChange} placeholder="ex. Latență mare pe /checkout" maxLength={200} required />
+              <input ref={titleInput} name="title" disabled={pending} value={form.title} onChange={handleFormChange} placeholder="ex. Latență mare pe /checkout" maxLength={200} required />
+            </label>
+            <label className="field field-wide">
+              Descriere
+              <textarea name="description" value={form.description} onChange={handleFormChange} maxLength={10000} rows={3} disabled={pending} />
             </label>
             <label className="field">
               Serviciu
-              <select name="service_id" value={form.service_id} onChange={handleFormChange} required>
+              <select name="service_id" disabled={pending} value={form.service_id} onChange={handleFormChange} required>
                 <option value="">Alege serviciul</option>
                 {services.map((service) => (
                   <option key={service.id} value={service.id}>{service.name}</option>
@@ -191,20 +195,22 @@ function IncidentsPage() {
               <div className="segmented-options">
                 {Object.keys(SEVERITIES).map((value) => (
                   <label key={value} title={SEVERITIES[value]}>
-                    <input type="radio" name="severity" value={value} checked={form.severity === value} onChange={handleFormChange} />
+                    <input type="radio" disabled={pending} name="severity" value={value} checked={form.severity === value} onChange={handleFormChange} />
                     SEV{value}
                   </label>
                 ))}
               </div>
             </fieldset>
             <div className="actions">
-              <button type="submit" className="button">Raportează</button>
-              <button type="button" className="button button-secondary" onClick={() => setReportOpen(false)}>Anulează</button>
+              <button type="submit" className="button" disabled={pending || !form.title.trim() || !form.service_id}>Raportează</button>
+              <button type="button" className="button button-secondary" onClick={() => setReportOpen(false)} disabled={pending}>Anulează</button>
             </div>
           </form>
         </section>
       )}
 
+      {(overviewError || serviceError) && <div className="notice notice-error" role="alert"><p>{overviewError || serviceError}</p></div>}
+      {listError && <div className="notice notice-error" role="alert"><p>{listError}</p></div>}
       {error && <div className="notice notice-error" role="alert"><p>{error}</p></div>}
 
       <section aria-labelledby="list-title">
@@ -232,11 +238,11 @@ function IncidentsPage() {
         <div className="list-head">
           <div className="tabs" role="group" aria-label="Filtrează după status">
             <button type="button" aria-pressed={filters.status === ''} onClick={() => setFilters({ ...filters, status: '' })}>
-              Toate <span className="tab-count">{allIncidents.length}</span>
+              Toate <span className="tab-count">{allIncidents?.length ?? '—'}</span>
             </button>
             {TABS.map(([status, label]) => (
               <button key={status} type="button" aria-pressed={filters.status === status} onClick={() => setFilters({ ...filters, status })}>
-                {label} <span className="tab-count">{allIncidents.filter((incident) => incident.status === status).length}</span>
+                {label} <span className="tab-count">{allIncidents?.filter((incident) => incident.status === status).length ?? '—'}</span>
               </button>
             ))}
           </div>
@@ -244,11 +250,11 @@ function IncidentsPage() {
 
         {loading && <p className="empty">Se încarcă incidentele...</p>}
 
-        {!loading && incidents.length === 0 && (
+        {!loading && !listError && incidents.length === 0 && (
           <p className="empty">Niciun incident nu se potrivește filtrelor. Alegeți „Toate” sau alt serviciu.</p>
         )}
 
-        {!loading && incidents.length > 0 && (
+        {!loading && !listError && incidents.length > 0 && (
           <div className="table-scroll">
             <table>
               <thead>
@@ -279,7 +285,7 @@ function IncidentsPage() {
                           <select
                             value={incident.status}
                             onChange={(event) => handleStatusChange(incident, event.target.value)}
-                            disabled={TRANSITIONS[incident.status].length === 0}
+                            disabled={pending || TRANSITIONS[incident.status].length === 0}
                           >
                             {Object.entries(STATUSES)
                               .filter(([value]) => value === incident.status || TRANSITIONS[incident.status].includes(value))
@@ -292,7 +298,7 @@ function IncidentsPage() {
                     </td>
                     <td>
                       {incident.status === 'deschis' && (
-                        <button type="button" className="icon-button" aria-label={`Șterge incidentul ${incident.id}`} title="Șterge (doar dacă a fost raportat din greșeală)" onClick={() => handleDelete(incident)}>
+                        <button type="button" className="icon-button" disabled={pending} aria-label={`Șterge incidentul ${incident.id}`} title="Șterge (doar dacă a fost raportat din greșeală)" onClick={() => handleDelete(incident)}>
                           <IconTrash />
                         </button>
                       )}

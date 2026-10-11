@@ -25,12 +25,15 @@ inițiale din template, pentru proiecte și sarcini.
 | `01-cazuri-de-utilizare.excalidraw` / `.png` | cazuri de utilizare | paginile React și endpoint-urile din `backend/app/routers/` |
 | `02-clase.excalidraw` / `.png` | clase | `backend/app/models.py` (tabelele `service`, `incident`, `incident_update`) |
 | `03-stari-incident.excalidraw` / `.png` | stări | câmpul `status` al incidentului și regulile din `routers/incidents.py` |
+| `04-activitati-postmortem-ia.excalidraw` / `.png` | activități | draftul de postmortem: `IncidentDetailPage` → `ai_postmortem()` → `llm.chat()`, cu 404 / 503 / 502 |
 | `05-secventa-inchidere.excalidraw` / `.png` | secvență | închiderea unui incident: `IncidentDetailPage` → `api.js` → `update_incident()` → `Session` → PostgreSQL |
 | `07-componente.excalidraw` / `.png` | componente | modulele din `frontend/src` și `backend/app` |
 | `07-desfasurare.excalidraw` / `.png` | desfășurare | containerele din `compose.yaml` și Ollama |
 
 Fișierele `.excalidraw` se deschid la https://excalidraw.com (meniu → Open) sau în VS Code cu extensia
 Excalidraw (`pomdtr.excalidraw-editor`).
+
+Actualizarea din 11 octombrie 2026 păstrează structura diagramelor și schimbă fluxul IA în previzualizare → aplicare explicită → editare → salvare. Diagrama de desfășurare indică publicarea porturilor numai pe loopback și mediul de test separat. Diagrama de componente arată principalele grupuri de module; `useMutation` și `useSystemHealth` gestionează cererile și starea conexiunilor. Imaginile PNG au fost regenerate din sursele Excalidraw.
 
 ## Cum le deschideți
 

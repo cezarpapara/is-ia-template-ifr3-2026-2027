@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 # Schemele Pydantic descriu datele care intra si ies prin API.
 # FastAPI le foloseste pentru validare automata (eroare 422) si pentru Swagger (/docs).
@@ -9,12 +9,20 @@ from pydantic import BaseModel, ConfigDict, Field
 # Statusurile permise pentru un incident (diagrama de stari a incidentului)
 IncidentStatus = Literal["deschis", "confirmat", "in_lucru", "rezolvat", "inchis"]
 
+# Limite comune pentru formulare si pentru contextul trimis modelului local.
+TEXT_LIMIT = 10_000
+POSTMORTEM_LIMIT = 20_000
+
+
+class InputModel(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
 
 # ---------- Servicii ----------
 
-class ServiceCreate(BaseModel):
+class ServiceCreate(InputModel):
     name: str = Field(min_length=1, max_length=100, examples=["api-gateway"])
-    description: str | None = Field(default=None, examples=["Punctul de intrare pentru cererile externe."])
+    description: str | None = Field(default=None, max_length=TEXT_LIMIT, examples=["Punctul de intrare pentru cererile externe."])
     owner: str = Field(min_length=1, max_length=100, examples=["Echipa Platforma"])
     tier: int = Field(default=2, ge=1, le=3)
 
@@ -34,20 +42,28 @@ class ServiceRead(BaseModel):
 # ---------- Incidente ----------
 
 # Un incident nou porneste mereu din starea "deschis", deci statusul nu se trimite la creare
-class IncidentCreate(BaseModel):
+class IncidentCreate(InputModel):
     title: str = Field(min_length=1, max_length=200, examples=["Latenta mare pe /checkout"])
-    description: str | None = None
+    description: str | None = Field(default=None, max_length=TEXT_LIMIT)
     severity: int = Field(default=2, ge=1, le=3)
-    service_id: int
+    service_id: int = Field(gt=0)
 
 
 # La modificare toate campurile sunt optionale: se trimit doar cele care se schimba
-class IncidentPatch(BaseModel):
+class IncidentPatch(InputModel):
     title: str | None = Field(default=None, min_length=1, max_length=200)
-    description: str | None = None
+    description: str | None = Field(default=None, max_length=TEXT_LIMIT)
     severity: int | None = Field(default=None, ge=1, le=3)
     status: IncidentStatus | None = Field(default=None, examples=["confirmat"])
-    postmortem: str | None = None
+    postmortem: str | None = Field(default=None, max_length=POSTMORTEM_LIMIT)
+
+    @field_validator("title", "severity", "status")
+    @classmethod
+    def required_when_supplied(cls, value):
+        # Campurile omise raman neschimbate; numai description/postmortem accepta null.
+        if value is None:
+            raise ValueError("Campul nu poate fi null atunci cand este trimis.")
+        return value
 
 
 class IncidentRead(BaseModel):
@@ -67,8 +83,8 @@ class IncidentRead(BaseModel):
 
 # ---------- Cronologia incidentului ----------
 
-class IncidentUpdateCreate(BaseModel):
-    text: str = Field(min_length=1, examples=["Am facut rollback la versiunea 1.4.2."])
+class IncidentUpdateCreate(InputModel):
+    text: str = Field(min_length=1, max_length=TEXT_LIMIT, examples=["Am facut rollback la versiunea 1.4.2."])
     author: str = Field(min_length=1, max_length=100, examples=["Ion Popescu"])
 
 
@@ -91,9 +107,9 @@ class AiStatus(BaseModel):
     detalii: str
 
 
-class ChatRequest(BaseModel):
-    message: str = Field(min_length=1, examples=["Ce este un postmortem fara vinovati?"])
-    system: str | None = Field(default=None, examples=["Raspunde scurt, in limba romana."])
+class ChatRequest(InputModel):
+    message: str = Field(min_length=1, max_length=TEXT_LIMIT, examples=["Ce este un postmortem fara vinovati?"])
+    system: str | None = Field(default=None, max_length=4_000, examples=["Raspunde scurt, in limba romana."])
 
 
 class ChatResponse(BaseModel):

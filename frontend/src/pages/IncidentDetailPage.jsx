@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { api, formatDate, STATUSES, STEPS, TRANSITIONS } from '../api.js'
+import { useMutation } from '../useMutation.js'
 import { IconInfo, IconRefresh, SeverityTag } from '../ui.jsx'
 
 // Textul butonului pentru o tranzitie permisa; "in_lucru" inseamna altceva dupa rezolvare
@@ -20,89 +21,119 @@ function formatDraft(draft) {
 // Pagina unui incident: ciclul de viata, schimbarea statusului, postmortem-ul si cronologia
 function IncidentDetailPage() {
   const { id } = useParams()
+  return <IncidentEditor key={id} id={id} />
+}
+
+function IncidentEditor({ id }) {
   const [incident, setIncident] = useState(null)
   const [service, setService] = useState(null)
   const [updates, setUpdates] = useState([])
   const [form, setForm] = useState({ author: '', text: '' })
   const [postmortem, setPostmortem] = useState('')
   const [fromAi, setFromAi] = useState(false)
-  const [drafting, setDrafting] = useState(false)
+  const [aiDraft, setAiDraft] = useState(null)
+  const [recovered, setRecovered] = useState(false)
+  const [storageError, setStorageError] = useState(null)
+  const [closing, setClosing] = useState(false)
   const [message, setMessage] = useState(null)
   const [error, setError] = useState(null)
 
-  // GET /api/incidents/{id}, GET /api/incidents/{id}/updates si serviciul incidentului.
-  // keepPostmortem: pastreaza textul nesalvat din campul postmortem (de exemplu un draft al modelului)
-  function load({ keepPostmortem = false } = {}) {
-    Promise.all([api.getIncident(id), api.getIncidentUpdates(id), api.getServices()])
-      .then(([incidentData, updatesData, services]) => {
-        setIncident(incidentData)
-        setUpdates(updatesData)
-        setService(services.find((item) => item.id === incidentData.service_id) ?? null)
-        if (!keepPostmortem) {
-          setPostmortem(incidentData.postmortem ?? '')
-          setFromAi(false)
-        }
-        setError(null)
-      })
-      .catch((err) => setError(err.message))
-  }
+  const { pending, run } = useMutation(setError)
+  const { pending: drafting, run: runDraft } = useMutation(setError)
+  const storageKey = `oncall:postmortem:${id}`
 
   useEffect(() => {
-    load()
-  }, [id])
+    const controller = new AbortController()
+    const options = { signal: controller.signal }
+    Promise.all([api.getIncident(id, options), api.getIncidentUpdates(id, options), api.getServices(options)])
+      .then(([data, timeline, services]) => {
+        if (controller.signal.aborted) return
+        setIncident(data)
+        setUpdates(timeline)
+        setService(services.find((item) => item.id === data.service_id) ?? null)
+        let restored = null
+        try { restored = sessionStorage.getItem(storageKey) }
+        catch { setStorageError('Recuperarea automată nu este disponibilă în acest browser. Copiați textul înainte de a părăsi pagina.') }
+        const canRecover = data.status !== 'inchis' && restored !== null && restored !== (data.postmortem ?? '')
+        setPostmortem(canRecover ? restored : (data.postmortem ?? ''))
+        setRecovered(canRecover)
+      })
+      .catch((err) => { if (!controller.signal.aborted) setError(err.message) })
+    return () => controller.abort()
+  }, [id, storageKey])
 
   const closed = incident?.status === 'inchis'
   const unsaved = incident !== null && postmortem !== (incident.postmortem ?? '')
 
-  // PATCH /api/incidents/{id}; la inchidere se trimite si postmortem-ul scris in pagina
-  async function handleStatusChange(status) {
-    const changes = status === 'inchis' && postmortem.trim() ? { status, postmortem } : { status }
+  useEffect(() => {
+    if (!incident) return
     try {
-      await api.updateIncident(id, changes)
-      setMessage(null)
-      load({ keepPostmortem: status !== 'inchis' })
-    } catch (err) {
-      setError(err.message)
+      if (unsaved && !closed) sessionStorage.setItem(storageKey, postmortem)
+      else sessionStorage.removeItem(storageKey)
+    } catch {
+      setStorageError('Recuperarea automată nu este disponibilă în acest browser. Copiați textul înainte de a părăsi pagina.')
     }
+  }, [incident, postmortem, unsaved, closed, storageKey])
+
+  useEffect(() => {
+    if (!unsaved || closed) return
+    const warn = (event) => { event.preventDefault(); event.returnValue = '' }
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [unsaved, closed])
+
+  function handleStatusChange(status) {
+    run(async () => {
+      setError(null)
+      setClosing(status === 'inchis')
+      try {
+        const changes = status === 'inchis' ? { status, postmortem } : { status }
+        const saved = await api.updateIncident(id, changes)
+        setIncident(saved)
+        if (status === 'inchis') { setPostmortem(saved.postmortem ?? ''); setAiDraft(null) }
+        setMessage(null)
+      } finally { setClosing(false) }
+    })
   }
 
-  // POST /api/incidents/{id}/updates
-  async function handleAddUpdate(event) {
+  function handleAddUpdate(event) {
     event.preventDefault()
-    try {
-      await api.addIncidentUpdate(id, form)
-      setForm({ ...form, text: '' })
-      load({ keepPostmortem: true })
-    } catch (err) {
-      setError(err.message)
-    }
+    if (!form.author.trim() || !form.text.trim()) return
+    run(async () => {
+      setError(null)
+      const saved = await api.addIncidentUpdate(id, { author: form.author.trim(), text: form.text.trim() })
+      setUpdates((current) => [...current, saved])
+      setForm((current) => ({ ...current, text: '' }))
+    })
   }
 
-  // PATCH /api/incidents/{id} cu postmortem-ul
-  async function handleSavePostmortem() {
-    try {
-      await api.updateIncident(id, { postmortem })
+  function handleSavePostmortem() {
+    run(async () => {
+      setError(null)
+      const submittedText = postmortem
+      const saved = await api.updateIncident(id, { postmortem: submittedText })
+      // Acceptăm normalizarea doar dacă utilizatorul nu a editat între timp.
+      setPostmortem((current) => current === submittedText ? (saved.postmortem ?? '') : current)
+      setIncident(saved)
       setMessage('Postmortem salvat.')
-      load()
-    } catch (err) {
-      setError(err.message)
-    }
+      setRecovered(false)
+    })
   }
 
-  // POST /api/ai/incidents/{id}/postmortem - draftul apare in camp; se salveaza doar daca apasati Salvează
-  async function handleDraft() {
-    setDrafting(true)
-    setError(null)
-    setMessage(null)
-    try {
+  function handleDraft() {
+    runDraft(async () => {
+      setError(null)
+      setMessage(null)
       const draft = await api.draftPostmortem(id)
-      setPostmortem(formatDraft(draft))
-      setFromAi(true)
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setDrafting(false)
-    }
+      setAiDraft(formatDraft(draft))
+    })
+  }
+
+  function handleApplyDraft() {
+    if (postmortem.trim() && !window.confirm('Înlocuiți textul postmortem-ului cu propunerea IA?')) return
+    setPostmortem(aiDraft)
+    setFromAi(true)
+    setAiDraft(null)
   }
 
   if (!incident) {
@@ -139,6 +170,7 @@ function IncidentDetailPage() {
               type="button"
               className={STEPS.indexOf(to) > current ? 'button' : 'button button-secondary'}
               onClick={() => handleStatusChange(to)}
+              disabled={pending || drafting}
             >
               {transitionLabel(incident.status, to)}
             </button>
@@ -147,6 +179,8 @@ function IncidentDetailPage() {
       </header>
 
       {error && <div className="notice notice-error" role="alert"><p>{error}</p></div>}
+      {storageError && <div className="notice notice-rule" role="alert"><p>{storageError}</p></div>}
+      {recovered && <p className="notice notice-rule" role="status">Draft recuperat din această sesiune. Verificați textul înainte de salvare.</p>}
       {message && <div className="notice notice-ok" role="status"><p>{message}</p></div>}
 
       <section className="card" aria-label="Ciclul de viață al incidentului">
@@ -184,19 +218,31 @@ function IncidentDetailPage() {
             aria-labelledby="pm-title"
             value={postmortem}
             onChange={(event) => setPostmortem(event.target.value)}
-            readOnly={closed}
+            readOnly={closed || closing}
+            maxLength={20000}
             placeholder="Cauza, impactul și acțiunile care previn repetarea incidentului"
           />
           {!closed && (
             <div className="actions">
-              <button type="button" className="button" onClick={handleSavePostmortem} disabled={!unsaved}>Salvează postmortem</button>
-              <button type="button" className="button button-secondary" onClick={handleDraft} disabled={drafting}>
+              <button type="button" className="button" onClick={handleSavePostmortem} disabled={!unsaved || pending}>Salvează postmortem</button>
+              <button type="button" className="button button-secondary" onClick={handleDraft} disabled={drafting || pending}>
                 <IconRefresh />
                 {postmortem.trim() ? 'Generează din nou cu IA' : 'Generează draft cu IA'}
               </button>
               {drafting && <span className="muted">Modelul scrie draftul din cronologie...</span>}
               {fromAi && unsaved && !drafting && <span className="muted">Verificați draftul înainte de salvare.</span>}
             </div>
+          )}
+          {aiDraft !== null && !closed && (
+            <section className="answer" aria-labelledby="ai-draft-title">
+              <h3 id="ai-draft-title">Propunere IA</h3>
+              <p>Verificați faptele și ipotezele. Aplicarea copiază propunerea în editor; salvarea rămâne un pas separat.</p>
+              <pre className="draft-preview">{aiDraft}</pre>
+              <div className="actions">
+                <button type="button" className="button" onClick={handleApplyDraft} disabled={pending || drafting}>Aplică draftul</button>
+                <button type="button" className="button button-secondary" onClick={() => setAiDraft(null)}>Renunță la propunere</button>
+              </div>
+            </section>
           )}
         </section>
 
@@ -240,13 +286,13 @@ function IncidentDetailPage() {
               <form onSubmit={handleAddUpdate} className="timeline-form">
                 <label className="field">
                   Autor
-                  <input value={form.author} onChange={(event) => setForm({ ...form, author: event.target.value })} placeholder="Numele vostru" maxLength={100} required />
+                  <input disabled={pending} value={form.author} onChange={(event) => setForm({ ...form, author: event.target.value })} placeholder="Numele vostru" maxLength={100} required />
                 </label>
                 <label className="field">
                   Ce s-a întâmplat?
-                  <textarea rows={2} value={form.text} onChange={(event) => setForm({ ...form, text: event.target.value })} placeholder="ex. Am confirmat cauza în loguri" required />
+                  <textarea disabled={pending} maxLength={10000} rows={2} value={form.text} onChange={(event) => setForm({ ...form, text: event.target.value })} placeholder="ex. Am confirmat cauza în loguri" required />
                 </label>
-                <button type="submit" className="button">Adaugă în cronologie</button>
+                <button type="submit" className="button" disabled={pending || !form.author.trim() || !form.text.trim()}>Adaugă în cronologie</button>
               </form>
             )}
           </section>
