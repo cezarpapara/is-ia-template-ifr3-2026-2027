@@ -9,6 +9,7 @@ export default defineConfig({
     host: true,        // accesibil din afara containerului (din browserul vostru)
     port: 5173,
     strictPort: true,
+    allowedHosts: ['echipa.asociatiamb.ro'], // permite cererile prin domeniul din Nginx Proxy Manager
     watch: {
       usePolling: true // necesar pe Windows + Docker, ca modificarile sa se vada imediat
     }

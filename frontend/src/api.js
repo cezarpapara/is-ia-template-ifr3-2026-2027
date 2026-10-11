@@ -1,20 +1,15 @@
 // Toate cererile catre backend sunt grupate aici, intr-un singur loc.
-// Adresa backend-ului vine din fisierul .env (VITE_API_URL).
+// Adresa backend-ului vine din compose.yaml (VITE_API_URL).
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
-// Transforma raspunsul de eroare FastAPI ({"detail": ...}) intr-un mesaj citibil
 function errorMessage(data, status) {
-  if (typeof data?.detail === 'string') {
-    return data.detail
-  }
-  // Eroare 422 (validare): detail este o lista cu cate o problema pentru fiecare camp
+  if (typeof data?.detail === 'string') return data.detail
   if (Array.isArray(data?.detail)) {
     return data.detail.map((item) => `${item.loc.at(-1)}: ${item.msg}`).join('; ')
   }
   return `Eroare ${status}`
 }
 
-// Functie generala: trimite cererea si intoarce raspunsul JSON (sau arunca o eroare)
 async function request(path, options = {}) {
   let response
   try {
@@ -23,77 +18,53 @@ async function request(path, options = {}) {
       ...options,
     })
   } catch {
-    throw new Error(`Backend-ul nu raspunde la ${API_URL}.`)
+    throw new Error(`Backend-ul nu răspunde la ${API_URL}.`)
   }
-
-  // 204 = "No Content" (de exemplu dupa stergere): nu exista JSON in raspuns
-  if (response.status === 204) {
-    return null
-  }
-
+  if (response.status === 204) return null
   const data = await response.json().catch(() => null)
-  if (!response.ok) {
-    throw new Error(errorMessage(data, response.status))
-  }
+  if (!response.ok) throw new Error(errorMessage(data, response.status))
   return data
 }
 
-// Construieste "?cheie=valoare&..." doar din filtrele completate
 function queryString(params) {
-  const filled = Object.entries(params).filter(([, value]) => value !== '' && value != null)
+  const filled = Object.entries(params).filter(([, v]) => v !== '' && v != null)
   return filled.length ? `?${new URLSearchParams(filled)}` : ''
 }
 
+const json = (method, body) => ({ method, body: JSON.stringify(body) })
+
 export const api = {
   url: API_URL,
-
-  // GET /api/health
-  getHealth: () => request('/api/health'),
-
-  // GET /api/projects
-  getProjects: () => request('/api/projects'),
-
-  // POST /api/projects
-  createProject: (project) =>
-    request('/api/projects', { method: 'POST', body: JSON.stringify(project) }),
-
-  // GET /api/tasks?project_id=&status=
-  getTasks: (filters = {}) => request(`/api/tasks${queryString(filters)}`),
-
-  // GET /api/tasks/{id}
-  getTask: (id) => request(`/api/tasks/${id}`),
-
-  // POST /api/tasks
-  createTask: (task) =>
-    request('/api/tasks', { method: 'POST', body: JSON.stringify(task) }),
-
-  // PATCH /api/tasks/{id}
-  updateTask: (id, changes) =>
-    request(`/api/tasks/${id}`, { method: 'PATCH', body: JSON.stringify(changes) }),
-
-  // DELETE /api/tasks/{id}
-  deleteTask: (id) => request(`/api/tasks/${id}`, { method: 'DELETE' }),
-
-  // GET /api/ai/status
-  getAiStatus: () => request('/api/ai/status'),
-
-  // POST /api/ai/chat
-  chat: (message, system) =>
-    request('/api/ai/chat', { method: 'POST', body: JSON.stringify({ message, system }) }),
-
-  // POST /api/ai/tasks/{id}/subtasks
-  suggestSubtasks: (taskId) => request(`/api/ai/tasks/${taskId}/subtasks`, { method: 'POST' }),
+  // Server
+  streamUrl: `${API_URL}/api/system/stream`,
+  getHistory: (minutes = 60) => request(`/api/system/history?minutes=${minutes}`),
+  // Modele
+  getModels: () => request('/api/models'),
+  unloadModel: (name) => request(`/api/models/${encodeURIComponent(name)}/unload`, { method: 'POST' }),
+  // Agenda si istoric
+  getJobs: (filters = {}) => request(`/api/jobs${queryString(filters)}`),
+  getJobStats: () => request('/api/jobs/stats'),
+  createJobs: (job) => request('/api/jobs', json('POST', job)),
+  cancelJob: (id) => request(`/api/jobs/${id}/cancel`, { method: 'POST' }),
+  requeueJob: (id) => request(`/api/jobs/${id}/requeue`, { method: 'POST' }),
+  deleteJob: (id) => request(`/api/jobs/${id}`, { method: 'DELETE' }),
+  // Memorie
+  getMemory: (q = '') => request(`/api/memory${queryString({ q })}`),
+  addMemory: (item) => request('/api/memory', json('POST', item)),
+  updateMemory: (id, changes) => request(`/api/memory/${id}`, json('PATCH', changes)),
+  deleteMemory: (id) => request(`/api/memory/${id}`, { method: 'DELETE' }),
 }
 
-// Textele afisate pentru statusuri si prioritati
+export const PRIORITIES = { 1: 'Mică', 2: 'Medie', 3: 'Mare' }
 export const STATUSES = {
-  de_facut: 'De facut',
-  in_lucru: 'In lucru',
-  finalizat: 'Finalizat',
+  queued: 'În așteptare',
+  running: 'Se procesează',
+  done: 'Terminat',
+  failed: 'Eșuat',
+  cancelled: 'Anulat',
 }
 
-export const PRIORITIES = {
-  1: 'Mica',
-  2: 'Medie',
-  3: 'Mare',
-}
+export const gb = (bytes) => `${(bytes / 2 ** 30).toFixed(1)} GB`
+export const secs = (ms) => (ms == null ? '–' : `${(ms / 1000).toFixed(1)} s`)
+export const when = (iso) =>
+  iso ? new Date(iso).toLocaleString('ro-RO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '–'

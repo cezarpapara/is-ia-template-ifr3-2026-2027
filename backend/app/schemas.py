@@ -58,25 +58,63 @@ class TaskRead(BaseModel):
     project_id: int
 
 
-# ---------- Inteligenta artificiala (Ollama) ----------
+# ---------- Scriptorium: agenda, istoric, memorie ----------
 
-class AiStatus(BaseModel):
-    ollama: Literal["disponibil", "indisponibil"]
+JobStatus = Literal["queued", "running", "done", "failed", "cancelled"]
+
+
+class JobCreate(BaseModel):
+    prompt: str = Field(min_length=1, examples=["Explica pe scurt ce este o diagrama de secventa."])
+    title: str | None = Field(default=None, max_length=200)
+    system: str | None = None
+    # Mai multe modele = comparatie: se creeaza cate un job pentru fiecare, cu acelasi group_id
+    models: list[str] = Field(default=["auto"], min_length=1, max_length=5)
+    priority: int = Field(default=2, ge=1, le=3)
+    scheduled_at: datetime | None = None
+    use_memory: bool = True
+
+
+class JobRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    title: str
+    prompt: str
+    system: str | None
     model: str
-    models: list[str]
-    detalii: str
+    model_used: str | None
+    status: JobStatus
+    priority: int
+    scheduled_at: datetime | None
+    created_at: datetime
+    started_at: datetime | None
+    finished_at: datetime | None
+    result: str | None
+    error: str | None
+    prompt_tokens: int | None
+    completion_tokens: int | None
+    duration_ms: int | None
+    tokens_per_s: float | None
+    use_memory: bool
+    memory_hits: int
+    group_id: str | None
 
 
-class ChatRequest(BaseModel):
-    message: str = Field(min_length=1, examples=["Ce este o diagrama de clase UML?"])
-    system: str | None = Field(default=None, examples=["Raspunde scurt, in limba romana."])
+class MemoryCreate(BaseModel):
+    content: str = Field(min_length=1, max_length=500)
+    pinned: bool = False
 
 
-class ChatResponse(BaseModel):
-    model: str
-    answer: str
+class MemoryUpdate(BaseModel):
+    content: str | None = Field(default=None, min_length=1, max_length=500)
+    pinned: bool | None = None
 
 
-class SubtasksResponse(BaseModel):
-    task_id: int
-    subtasks: list[str]
+class MemoryRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    content: str
+    pinned: bool
+    source_job_id: int | None
+    created_at: datetime

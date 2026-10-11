@@ -1,61 +1,25 @@
-# Template de proiect – Inginerie software și Inteligență artificială
+# Scriptorium – orchestrator pentru modelele locale
 
-Proiect de pornire pentru laboratoarele de **Inginerie software** și **Inteligență artificială**, Informatică IFR, anul III, 2026–2027.
-Cadru didactic: Asist. univ. drd. asoc. Cezar-Marian Papară.
+Aplicație construită pe template-ul de la Inginerie software (FastAPI + PostgreSQL + React, în Docker).
+Serverul propriu cu modele Ollama devine un „atelier”: cererile se pun într-o agendă salvată în baza de
+date, un worker le procesează pe rând, rezultatele rămân în istoric, iar faptele importante intră într-o memorie
+care se reinjectează în cererile următoare.
 
-Aplicația gestionează proiecte și sarcini și are un asistent bazat pe un model de limbaj (LLM) care rulează local:
-
-- **backend** – Python 3.12, FastAPI, SQLAlchemy, Alembic, cu bază de date PostgreSQL 17;
-- **frontend** – React 19 + Vite;
-- **LLM** – Ollama, instalat direct pe calculator (nu în Docker).
-
-Backend-ul, frontend-ul și baza de date rulează în containere Docker; nu este nevoie să instalați Python, Node.js sau PostgreSQL.
+## Ce face
+- **Birou**: CPU și RAM în timp real (SSE), pe nuclee, modelele aflate în memorie, ultima oră din baza de date.
+- **Agendă**: joburi cu prioritate și oră programată; alegi unul sau mai multe modele (mai multe = comparație).
+- **Istoric**: tot ce s-a procesat, cu tokeni/secundă, durată, amintiri folosite; „Rulează din nou”.
+- **Memorie**: fapte extrase automat de model din joburile terminate, plus cele adăugate sau fixate manual.
+- **Modele**: ce e instalat, ce e încărcat, viteza medie măsurată, „Eliberează memoria”.
 
 ## Pornire
-
 ```bash
-git clone https://github.com/cezarpapara/is-ia-template-ifr3-2026-2027.git
-cd is-ia-template-ifr3-2026-2027
-git checkout -b nume.prenume
+cp backend/.env.example backend/.env   # aici (și doar aici) pui GEMINI_API_KEY, dacă o folosești
 docker compose up -d --build
 ```
+Aplicația: http://IP-SERVER:5173 · Swagger: http://IP-SERVER:8010/docs
 
-La pornirile următoare: `docker compose up -d`; oprire: `docker compose stop`.
-
-| Container | Ce conține | Adresa |
-|---|---|---|
-| `is-ia-node` | aplicația React (Vite) | http://localhost:5173 |
-| `is-ia-python` | API-ul FastAPI; documentația (Swagger) | http://localhost:8000/docs |
-| `is-ia-postgres` | PostgreSQL (pentru DBeaver) | `localhost:5432`, bază/utilizator/parolă `isia` / `isia` / `isia` |
-
-## Structura proiectului
-
-```
-.env              configurarea: baza de date, porturile, modelul Ollama
-compose.yaml      cele trei containere (folosesc valorile din .env)
-backend/          codul Python (FastAPI)
-frontend/         codul React
-docker/
-  python/         Dockerfile-ul containerului is-ia-python
-  node/           Dockerfile-ul containerului is-ia-node
-  postgres/data/  datele bazei de date (create la prima pornire; nu se urcă pe GitHub)
-docs/diagrame/    diagramele UML (draw.io)
-```
-
-Dacă un port este ocupat sau vreți alt model Ollama, modificați valoarea în `.env`, apoi rulați `docker compose up -d`.
-Pentru a porni cu o bază de date goală: `docker compose down`, ștergeți conținutul folderului `docker/postgres/data` (fără fișierul `.gitkeep`), apoi `docker compose up -d`.
-
-## Ollama
-
-Instalați Ollama de pe https://ollama.com și descărcați modelul implicit:
-
-```bash
-ollama pull qwen2.5:1.5b
-```
-
-Pe Linux, Ollama trebuie să accepte conexiuni din Docker: porniți-l cu `OLLAMA_HOST=0.0.0.0 ollama serve`.
-Pagina **Acasă** a aplicației arată dacă backend-ul și Ollama funcționează.
-
-## Îndrumarele de laborator
-
-Îndrumarele de laborator (instalare, modul de lucru cu Git, explicarea fiecărui fișier, cerințele proiectului) se găsesc pe grupul Teams al disciplinei.
+## Unde sunt regulile din diagrame
+- Stările unui job: `backend/app/services/job_states.py` (`ALLOWED_TRANSITIONS`), verificate în `routers/jobs.py` (400) și în worker.
+- Planificarea după resurse și alegerea modelului „auto”: `backend/app/services/worker.py`.
+- Telemetria: `backend/app/services/system.py`; migrarea: `backend/alembic/versions/0002_scriptorium.py`.
