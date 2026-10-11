@@ -1,6 +1,7 @@
 // Toate cererile catre backend sunt grupate aici, intr-un singur loc.
-// Adresa backend-ului vine din compose.yaml (VITE_API_URL).
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
+// Implicit, cererile merg la aceeasi adresa ca pagina (/api/...), iar Vite le trimite backend-ului
+// (vezi vite.config.js). Doar daca setati VITE_API_URL in compose.yaml, se foloseste o adresa separata.
+const API_URL = import.meta.env.VITE_API_URL ?? ''
 
 function errorMessage(data, status) {
   if (typeof data?.detail === 'string') return data.detail
@@ -18,7 +19,7 @@ async function request(path, options = {}) {
       ...options,
     })
   } catch {
-    throw new Error(`Backend-ul nu răspunde la ${API_URL}.`)
+    throw new Error(`Backend-ul nu răspunde${API_URL ? ` la ${API_URL}` : ''}.`)
   }
   if (response.status === 204) return null
   const data = await response.json().catch(() => null)

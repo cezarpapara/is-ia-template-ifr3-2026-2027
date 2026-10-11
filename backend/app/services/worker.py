@@ -187,7 +187,14 @@ def _recover() -> None:
 
 
 def _loop() -> None:
-    _recover()
+    # Daca tabelele inca nu exista (migrarea nu a rulat), reincercam, nu murim
+    while not _stop.is_set():
+        try:
+            _recover()
+            break
+        except Exception as err:
+            print(f"[worker] astept baza de date / migrarea: {err}")
+            _stop.wait(5)
     while not _stop.is_set():
         try:
             job_id = _claim()

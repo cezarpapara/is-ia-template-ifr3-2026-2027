@@ -10,7 +10,7 @@ services:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@host.docker.internal:5432/${POSTGRES_DB}
       OLLAMA_URL: ${OLLAMA_URL}
       OLLAMA_MODEL: ${OLLAMA_MODEL}
-      CORS_ORIGINS: http://localhost:${FRONTEND_PORT},http://127.0.0.1:${FRONTEND_PORT},http://192.168.1.254:${FRONTEND_PORT}
+      CORS_ORIGINS: http://localhost:${FRONTEND_PORT},http://127.0.0.1:${FRONTEND_PORT},http://192.168.1.254:${FRONTEND_PORT},https://${PUBLIC_HOST},http://${PUBLIC_HOST}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
@@ -24,7 +24,11 @@ services:
       dockerfile: ../docker/node/Dockerfile
     container_name: is-ia-node
     environment:
-      VITE_API_URL: http://192.168.1.254:${BACKEND_PORT}
+      # gol = browserul apeleaza /api pe acelasi domeniu, iar Vite trimite cererile la backend
+      VITE_API_URL: ${VITE_API_URL:-}
+      VITE_PROXY_TARGET: http://backend:8000
+      # domeniul din Nginx Proxy Manager (altfel Vite raspunde "Blocked request")
+      ALLOWED_HOSTS: ${PUBLIC_HOST}
     ports:
       - "${FRONTEND_PORT}:5173"
     volumes:

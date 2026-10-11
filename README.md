@@ -17,7 +17,9 @@ care se reinjectează în cererile următoare.
 cp backend/.env.example backend/.env   # aici (și doar aici) pui GEMINI_API_KEY, dacă o folosești
 docker compose up -d --build
 ```
-Aplicația: http://IP-SERVER:5173 · Swagger: http://IP-SERVER:8010/docs
+Aplicația: http://IP-SERVER:5173 · Swagger (doar în rețeaua locală): http://IP-SERVER:8010/docs
+
+Publicarea pe internet prin Nginx Proxy Manager: vezi `docs/nginx-proxy-manager.md`.
 
 ## Unde sunt regulile din diagrame
 - Stările unui job: `backend/app/services/job_states.py` (`ALLOWED_TRANSITIONS`), verificate în `routers/jobs.py` (400) și în worker.
