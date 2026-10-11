@@ -28,6 +28,7 @@ export default function Agenda() {
   }
 
   const realModels = models.map((m) => m.name)
+  const cloudPicked = picked.some((n) => models.find((m) => m.name === n)?.provider === 'cloud')
   const allPicked = realModels.length > 0 && realModels.every((n) => picked.includes(n))
 
   function pickAll() {
@@ -90,6 +91,11 @@ export default function Agenda() {
               </button>
             ))}
           </div>
+          {cloudPicked && (
+            <p className="hint hint-warn">
+              Modelele Gemini rulează în cloud: cererea și faptele din memorie pleacă la Google.
+            </p>
+          )}
           {picked.length > 1 && (
             <p className="hint">Ai ales {picked.length} modele: aceeași cerere rulează la fiecare, pe rând, iar răspunsurile se compară în Istoric.</p>
           )}

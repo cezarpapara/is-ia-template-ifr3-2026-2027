@@ -6,10 +6,12 @@ import { ErrorNote } from '../components/Common.jsx'
 export default function Models() {
   const [models, setModels] = useState([])
   const [speeds, setSpeeds] = useState({})
+  const [geminiOn, setGeminiOn] = useState(true)
   const [error, setError] = useState(null)
   const pollError = usePoll(async () => {
     const [m, s] = await Promise.all([api.getModels(), api.getJobStats()])
     setModels(m.models)
+    setGeminiOn(m.gemini_configured)
     setSpeeds(s.models)
   }, 5000)
 
@@ -22,6 +24,12 @@ export default function Models() {
       <h1>Modele</h1>
       <p className="lede">Ce este instalat pe server. Viteza medie vine din joburile deja terminate, deci se precizează cu fiecare rulare.</p>
       <ErrorNote message={error ?? pollError} />
+      {!geminiOn && (
+        <p className="note">
+          Gemini nu este configurat. Pune GEMINI_API_KEY în backend/.env, apoi rulează
+          {' '}<code>docker compose restart backend</code>; modelele Gemini apar aici singure.
+        </p>
+      )}
       <div className="table-wrap">
         <table>
           <thead>
@@ -36,7 +44,9 @@ export default function Models() {
                 <td>{m.size_bytes ? gb(m.size_bytes) : '–'}</td>
                 <td>{speeds[m.name]?.avg_tokens_per_s ? `${speeds[m.name].avg_tokens_per_s} tokeni/s` : 'încă nemăsurată'}</td>
                 <td>
-                  {m.loaded ? (
+                  {m.provider === 'cloud' ? (
+                    <span className="mark mark-done"><i aria-hidden="true" />În cloud</span>
+                  ) : m.loaded ? (
                     <span className="mark mark-running"><i aria-hidden="true" />În memorie
                       <button className="link" onClick={() => unload(m.name)}>eliberează</button></span>
                   ) : <span className="mark mark-cancelled"><i aria-hidden="true" />Pe disc</span>}

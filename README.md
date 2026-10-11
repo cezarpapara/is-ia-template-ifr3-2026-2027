@@ -14,7 +14,7 @@ care se reinjectează în cererile următoare.
 
 ## Pornire
 ```bash
-cp backend/.env.example backend/.env   # aici (și doar aici) pui GEMINI_API_KEY, dacă o folosești
+cp backend/.env.example backend/.env   # aici (și doar aici) pui GEMINI_API_KEY; fișierul e ignorat de Git
 docker compose up -d --build
 ```
 Aplicația: http://IP-SERVER:5173 · Swagger (doar în rețeaua locală): http://IP-SERVER:8010/docs
@@ -25,3 +25,7 @@ Publicarea pe internet prin Nginx Proxy Manager: vezi `docs/nginx-proxy-manager.
 - Stările unui job: `backend/app/services/job_states.py` (`ALLOWED_TRANSITIONS`), verificate în `routers/jobs.py` (400) și în worker.
 - Planificarea după resurse și alegerea modelului „auto”: `backend/app/services/worker.py`.
 - Telemetria: `backend/app/services/system.py`; migrarea: `backend/alembic/versions/0002_scriptorium.py`.
+
+## Gemini (opțional)
+Pune `GEMINI_API_KEY=...` în `backend/.env` și rulează `docker compose restart backend` (uvicorn nu urmărește `.env`).
+Modelele Gemini apar singure în Agendă și în Modele, marcate „în cloud”. Lista se citește de la API; o poți fixa cu `GEMINI_MODELS=` în același fișier.

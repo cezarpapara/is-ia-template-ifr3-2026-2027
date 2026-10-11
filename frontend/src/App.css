@@ -121,6 +121,8 @@ textarea { resize: vertical; }
 .chip[aria-pressed='true'] { background: var(--burgundy); border-color: var(--burgundy); color: #fffdf8; }
 .chip[aria-pressed='true'] small { color: #ecd2d6; }
 .hint { margin: 0.3rem 0 0; color: var(--green); font-style: italic; }
+.hint-warn { color: var(--burgundy); }
+code { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 0.88em; background: var(--paper); padding: 0.05rem 0.35rem; border-radius: 4px; }
 .inline-form { display: flex; gap: 0.7rem; margin-bottom: 0.9rem; }
 .search { margin-bottom: 1.2rem; }
 

@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException
 
+from app.config import settings
 from app.services import llm
 
 router = APIRouter(prefix="/models", tags=["Modele"])
@@ -15,7 +16,7 @@ def get_models():
     loaded = {m["name"]: m for m in llm.loaded_models()}
     for m in models:
         m["loaded"] = m["name"] in loaded
-    return {"models": models}
+    return {"models": models, "gemini_configured": bool(settings.GEMINI_API_KEY)}
 
 
 # POST /api/models/{name}/unload - elibereaza memoria ocupata de un model

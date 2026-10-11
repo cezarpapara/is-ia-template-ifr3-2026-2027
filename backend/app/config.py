@@ -8,6 +8,8 @@ class Settings(BaseSettings):
     ollama_url: str = "http://localhost:11434"
     ollama_model: str = "qwen2.5:1.5b"
     gemini_api_key: str = ""
+    # Optional: lista de modele Gemini separate prin virgula; daca lipseste, se citesc de la API
+    gemini_models: str = ""
     cors_origins: str = "http://localhost:5173"
 
     @property
@@ -29,6 +31,10 @@ class Settings(BaseSettings):
     @property
     def GEMINI_API_KEY(self) -> str:
         return self.gemini_api_key
+
+    @property
+    def GEMINI_MODELS(self) -> list[str]:
+        return [m.strip() for m in self.gemini_models.split(",") if m.strip()]
 
     @property
     def CORS_ORIGINS(self) -> str:
