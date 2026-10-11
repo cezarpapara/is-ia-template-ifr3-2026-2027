@@ -4,11 +4,16 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- Fontul interfetei: Overpass, inspirat din literele indicatoarelor rutiere (Highway Gothic) -->
+    <!-- Fonturile temelor: Overpass (Semnale), inspirat din indicatoarele rutiere (Highway Gothic),
+         si Atkinson Hyperlegible Next (Benzi de zbor), desenat ca literele usor de confundat sa ramana distincte -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;700&family=Overpass:wght@400;600;700;800&display=swap" rel="stylesheet" />
     <title>Incidente on-call</title>
+    <!-- Tema aleasa se aplica inainte de prima afisare, ca pagina sa nu clipeasca in tema implicita -->
+    <script>
+      try { document.documentElement.dataset.theme = localStorage.getItem('oncall:tema') === 'benzi' ? 'benzi' : 'semnale' } catch { /* fara localStorage ramane tema implicita */ }
+    </script>
   </head>
   <body>
     <div id="root"></div>

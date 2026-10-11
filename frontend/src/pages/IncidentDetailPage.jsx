@@ -2,15 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { api, formatDate, STATUSES, STEPS, TRANSITIONS } from '../api.js'
 import { useMutation } from '../useMutation.js'
-import { IconInfo, IconRefresh, SeverityTag } from '../ui.jsx'
-
-// Textul butonului pentru o tranzitie permisa; "in_lucru" inseamna altceva dupa rezolvare
-function transitionLabel(from, to) {
-  if (to === 'confirmat') return 'Confirmă'
-  if (to === 'in_lucru') return from === 'rezolvat' ? 'Redeschide' : 'Începe lucrul'
-  if (to === 'rezolvat') return 'Marchează rezolvat'
-  return 'Închide incidentul'
-}
+import { IconInfo, IconRefresh, SeverityTag, transitionLabel } from '../ui.jsx'
 
 // Textul draftului propus de model, in forma in care se salveaza in campul postmortem
 function formatDraft(draft) {
@@ -151,7 +143,7 @@ function IncidentEditor({ id }) {
   const transitions = TRANSITIONS[incident.status]
 
   return (
-    <div className="page">
+    <div className="page" data-severity={incident.severity}>
       <nav className="breadcrumb" aria-label="Breadcrumb">
         <Link to="/incidente">Incidente</Link> <span aria-hidden="true">/</span> Incidentul {incident.id}
       </nav>

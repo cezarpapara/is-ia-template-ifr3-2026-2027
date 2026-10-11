@@ -5,8 +5,9 @@ import HomePage from './pages/HomePage.jsx'
 import IncidentsPage from './pages/IncidentsPage.jsx'
 import IncidentDetailPage from './pages/IncidentDetailPage.jsx'
 import AssistantPage from './pages/AssistantPage.jsx'
-import { Logo } from './ui.jsx'
+import { Logo, ThemeContext, THEMES, useTheme, useThemeState, withTransition } from './ui.jsx'
 import './App.css'
+import './theme-benzi.css'
 
 // Starea sistemului, in dreapta barei de sus: backend-ul (cu baza de date) si modelul din Ollama
 function SystemStatus() {
@@ -24,10 +25,25 @@ function SystemStatus() {
   )
 }
 
+// Alegerea temei, in bara de sus: "Semnale" sau "Benzi de zbor"
+function ThemeSwitch() {
+  const { theme, setTheme } = useTheme()
+  return (
+    <div className="theme-switch" role="group" aria-label="Tema interfeței">
+      {Object.entries(THEMES).map(([value, label]) => (
+        <button key={value} type="button" aria-pressed={theme === value} onClick={() => withTransition(() => setTheme(value))}>
+          {label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 // Structura comuna a tuturor paginilor: bara de sus + pagina curenta
 function App() {
+  const themeState = useThemeState()
   return (
-    <>
+    <ThemeContext value={themeState}>
       <header className="masthead">
         <div className="masthead-inner">
           <NavLink to="/incidente" className="brand"><Logo />On-call</NavLink>
@@ -37,6 +53,7 @@ function App() {
             <NavLink to="/stare">Starea sistemului</NavLink>
           </nav>
           <SystemStatus />
+          <ThemeSwitch />
         </div>
       </header>
 
@@ -51,7 +68,7 @@ function App() {
           <Route path="*" element={<div className="page"><h1>Pagina nu există</h1></div>} />
         </Routes>
       </main>
-    </>
+    </ThemeContext>
   )
 }
 

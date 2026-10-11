@@ -50,6 +50,19 @@ După actualizarea codului sau a dependențelor, rulați `docker compose up -d -
 
 Migrarea istorică `0003` **șterge tabelele `project`, `task` și `comment`, inclusiv datele lor**, înainte de a crea modelul de incidente. Faceți o copie de siguranță dacă folosiți încă date din template. Migrarea `0004` adaugă restricții și indici; dacă găsește date incompatibile, se oprește cu identificatorii înregistrărilor de corectat, fără să le rescrie automat.
 
+## Interfața
+
+Aplicația are două teme, alese din bara de sus („Semnale” sau „Benzi de zbor”); alegerea rămâne salvată în browser (`localStorage`).
+
+- **Semnale** (tema implicită): stilul semnalizării feroviare, cu lămpi pentru servicii și incidentele într-un tabel cu file pe status.
+- **Benzi de zbor**: după tabloul cu benzi de hârtie pe care controlorii de trafic aerian urmăresc fiecare avion. Fiecare incident este o bandă într-un suport colorat după severitate (SEV1 roșu, SEV2 chihlimbar, SEV3 albastru), iar compartimentele tabloului sunt stările din diagrama de stări. Butoanele unei benzi oferă doar tranzițiile permise; după ce backend-ul acceptă tranziția, banda alunecă în compartimentul nou (View Transitions API), iar focusul o urmează. Un incident SEV1/SEV2 fără postmortem nu primește butonul „Închide”, ci un link către postmortem, aceeași gardă ca `check_can_close()`. Fontul este Atkinson Hyperlegible Next, care păstrează distincte literele ușor de confundat (I, l, 1, O, 0).
+
+Codul temelor: `useThemeState()` și `withTransition()` din `frontend/src/ui.jsx`, tabloul de benzi din `frontend/src/pages/StripBoard.jsx` și stilurile din `frontend/src/theme-benzi.css`.
+
+![Lista incidentelor în tema Benzi de zbor](docs/interfata/benzi-de-zbor.png)
+
+![Lista incidentelor în tema Semnale](docs/interfata/semnale.png)
+
 ## Diagrame UML
 
 Diagramele se află în `docs/diagrame/`; sursa fiecărei imagini este fișierul `.excalidraw` cu același nume. Toate descriu codul de pe acest branch.
@@ -64,14 +77,14 @@ Fiecare caz de utilizare se regăsește în aplicație (matricea de trasabilitat
 |---|---|---|---|
 | Verifică starea sistemului | `GET /api/health`, `GET /api/ai/status` | `health()`, `ai_status()` | Starea sistemului (`/stare`), bara de sus |
 | Vede incidentele | `GET /api/incidents` | `list_incidents()` | Incidente (`/incidente`) |
-| Filtrează incidentele | `GET /api/incidents?service_id=&status=&severity=` | `list_incidents()` | Incidente: filele de status și filtrele |
+| Filtrează incidentele | `GET /api/incidents?service_id=&status=&severity=` | `list_incidents()` | Incidente: filtrele, plus filele de status (Semnale) sau compartimentele tabloului (Benzi de zbor) |
 | Raportează un incident | `POST /api/incidents` | `create_incident()` | Incidente: „Raportează incident” |
-| Schimbă statusul incidentului | `PATCH /api/incidents/{id}` | `update_incident()`, `check_transition()` | Incidente (lista de status), Detaliu incident (butoane) |
-| Închide incidentul | `PATCH /api/incidents/{id}` cu `status: inchis` | `update_incident()`, `check_can_close()` | Detaliu incident: „Închide incidentul” |
+| Schimbă statusul incidentului | `PATCH /api/incidents/{id}` | `update_incident()`, `check_transition()` | Incidente (lista de status sau butoanele benzii), Detaliu incident (butoane) |
+| Închide incidentul | `PATCH /api/incidents/{id}` cu `status: inchis` | `update_incident()`, `check_can_close()` | Detaliu incident: „Închide incidentul”; în Benzi de zbor și butonul benzii (pentru SEV1/SEV2 fără postmortem, banda duce la pagina incidentului) |
 | Adaugă o actualizare în cronologie | `POST /api/incidents/{id}/updates` | `create_update()` | Detaliu incident: Cronologie |
 | Scrie postmortem-ul | `PATCH /api/incidents/{id}` cu `postmortem` | `update_incident()` | Detaliu incident: Postmortem |
 | Generează draft cu IA | `POST /api/ai/incidents/{id}/postmortem` | `ai_postmortem()` | Detaliu incident: „Generează draft cu IA” |
-| Șterge un incident raportat greșit | `DELETE /api/incidents/{id}` | `delete_incident()` | Incidente: butonul de ștergere (`window.confirm`) |
+| Șterge un incident raportat greșit | `DELETE /api/incidents/{id}` | `delete_incident()` | Incidente: butonul de ștergere din tabel sau de pe bandă (`window.confirm`) |
 | Întreabă asistentul IA | `POST /api/ai/chat` | `ai_chat()` | Asistent IA (`/asistent`) |
 | Gestionează serviciile | `GET`, `POST /api/services` | `list_services()`, `create_service()` | Incidente: tabloul serviciilor și „Adaugă serviciu” |
 

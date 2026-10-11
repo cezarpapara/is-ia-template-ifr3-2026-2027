@@ -130,6 +130,35 @@ a:focus-visible {
   gap: 8px;
 }
 
+/* Alegerea temei: doua butoane lipite; cel apasat arata tema curenta */
+.theme-switch {
+  display: inline-flex;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+}
+
+.theme-switch button {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Inelul de focus trece peste butonul vecin, ca sa se vada complet */
+.theme-switch button:focus-visible {
+  position: relative;
+  z-index: 1;
+}
+
+.theme-switch button[aria-pressed='true'] {
+  background: var(--ink);
+  color: #ffffff;
+}
+
 /* ---------- Continutul paginii ---------- */
 .content {
   box-sizing: border-box;
@@ -954,6 +983,12 @@ code {
   .system {
     margin-left: 0;
   }
+}
+
+/* Schimbarea temei si mutarea unei benzi (View Transitions API): o tranzitie scurta */
+::view-transition-group(*) {
+  animation-duration: 0.34s;
+  animation-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
 /* Fara animatii pentru cine le-a dezactivat din sistem */

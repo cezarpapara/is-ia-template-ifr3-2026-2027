@@ -3,7 +3,8 @@ import { Link } from 'react-router'
 import { api, formatDate, SEVERITIES, STATUSES, TRANSITIONS } from '../api.js'
 import { useMutation } from '../useMutation.js'
 import ServiceForm from './ServiceForm.jsx'
-import { IconPlus, IconTrash, plural, SeverityTag, StatusTrack } from '../ui.jsx'
+import StripBoard from './StripBoard.jsx'
+import { IconPlus, IconTrash, plural, SeverityTag, StatusTrack, useTheme, withTransition } from '../ui.jsx'
 
 const emptyForm = { title: '', description: '', service_id: '', severity: '2' }
 
@@ -25,6 +26,8 @@ function IncidentsPage() {
   const [form, setForm] = useState(emptyForm)
   const [reportOpen, setReportOpen] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [loadedQuery, setLoadedQuery] = useState(null)
+  const [announcement, setAnnouncement] = useState('')
   const [error, setError] = useState(null)
   const [listError, setListError] = useState(null)
   const [overviewError, setOverviewError] = useState(null)
@@ -33,17 +36,29 @@ function IncidentsPage() {
   const [revision, setRevision] = useState(0)
   const { pending, run } = useMutation(setError)
   const titleInput = useRef(null)
+  const errorNotice = useRef(null)
+  // In tema "Benzi de zbor" lista devine tabloul de benzi, cu cate un compartiment pentru fiecare stare
+  const strips = useTheme().theme === 'benzi'
+  // Cererea pentru lista; tabloul de benzi arata toate starile odata, deci nu filtreaza dupa status
+  const listQuery = JSON.stringify({ service_id: filters.service_id, status: strips ? '' : filters.status, severity: filters.severity })
 
   useEffect(() => {
     const controller = new AbortController()
     setLoading(true)
     setListError(null)
-    api.getIncidents(filters, { signal: controller.signal })
+    api.getIncidents(JSON.parse(listQuery), { signal: controller.signal })
       .then((data) => { if (!controller.signal.aborted) setIncidents(data) })
       .catch((err) => { if (!controller.signal.aborted) setListError(err.message) })
-      .finally(() => { if (!controller.signal.aborted) setLoading(false) })
+      .finally(() => {
+        if (controller.signal.aborted) return
+        setLoading(false)
+        setLoadedQuery(listQuery)
+      })
     return () => controller.abort()
-  }, [filters, revision])
+  }, [listQuery, revision])
+
+  // Pana soseste raspunsul cererii curente, lista altei cereri (de exemplu doar incidentele rezolvate) nu se afiseaza
+  const listLoading = loading || loadedQuery !== listQuery
 
   useEffect(() => {
     const controller = new AbortController()
@@ -58,6 +73,11 @@ function IncidentsPage() {
       .catch((err) => { if (!controller.signal.aborted) setServiceError(err.message) })
     return () => controller.abort()
   }, [revision])
+
+  // Eroarea apare deasupra listei; daca pagina este derulata mai jos (la tabloul de benzi), o aducem in ecran
+  useEffect(() => {
+    if (error) errorNotice.current?.scrollIntoView?.({ block: 'nearest' })
+  }, [error])
 
   // Formularul primeste focusul cand se deschide
   useEffect(() => {
@@ -118,13 +138,50 @@ function IncidentsPage() {
     if (!window.confirm(`Ștergeți incidentul "${incident.title}"? Ștergeți doar incidentele raportate din greșeală.`)) return
     run(async () => {
       setError(null)
-      await api.deleteIncident(incident.id)
-      refresh()
+      await keepStripFocus(incident, api.deleteIncident(incident.id))
+      if (!strips) {
+        refresh()
+        return
+      }
+      await updateStrips((list) => list.filter((item) => item.id !== incident.id))
+      setAnnouncement(`INC-${incident.id} a fost șters.`)
+      document.getElementById(`bay-${incident.status}`)?.focus()
+    })
+  }
+
+  // Tabloul de benzi: banda mutata primeste incidentul salvat de backend si aluneca in compartimentul nou
+  function handleMove(incident, status) {
+    run(async () => {
+      setError(null)
+      const saved = await keepStripFocus(incident, api.updateIncident(incident.id, { status }))
+      await updateStrips((list) => list.map((item) => item.id === saved.id ? saved : item))
+      setAnnouncement(`INC-${saved.id} a trecut în compartimentul ${STATUSES[saved.status]}.`)
+      // Banda este acum in alta lista (alt compartiment), deci focusul trece pe titlul ei
+      document.getElementById(`strip-${saved.id}`)?.focus()
+    })
+  }
+
+  // Butonul apasat se dezactiveaza in timpul cererii si pierde focusul; daca cererea esueaza, focusul revine pe banda
+  async function keepStripFocus(incident, request) {
+    try {
+      return await request
+    } catch (err) {
+      if (strips) document.getElementById(`strip-${incident.id}`)?.focus()
+      throw err
+    }
+  }
+
+  // Actualizeaza local benzile si sumarul serviciilor, fara o noua incarcare a listei;
+  // butoanele raman blocate (pending) pana cand pagina arata starea noua
+  function updateStrips(change) {
+    return withTransition(() => {
+      setIncidents(change)
+      setAllIncidents((list) => list && change(list))
     })
   }
 
   return (
-    <div className="page">
+    <div className={strips ? 'page page-wide' : 'page'}>
       <header className="page-header">
         <div>
           <h1>Incidente</h1>
@@ -211,14 +268,14 @@ function IncidentsPage() {
 
       {(overviewError || serviceError) && <div className="notice notice-error" role="alert"><p>{overviewError || serviceError}</p></div>}
       {listError && <div className="notice notice-error" role="alert"><p>{listError}</p></div>}
-      {error && <div className="notice notice-error" role="alert"><p>{error}</p></div>}
+      {error && <div ref={errorNotice} className="notice notice-error" role="alert"><p>{error}</p></div>}
 
       <section aria-labelledby="list-title">
         <h2 id="list-title" className="visually-hidden">Lista incidentelor</h2>
         <div className="filters">
           <label className="field">
             Serviciu
-            <select name="service_id" value={filters.service_id} onChange={handleFilterChange}>
+            <select name="service_id" value={filters.service_id} onChange={handleFilterChange} disabled={pending}>
               <option value="">Toate</option>
               {services.map((service) => (
                 <option key={service.id} value={service.id}>{service.name}</option>
@@ -227,7 +284,7 @@ function IncidentsPage() {
           </label>
           <label className="field">
             Severitate
-            <select name="severity" value={filters.severity} onChange={handleFilterChange}>
+            <select name="severity" value={filters.severity} onChange={handleFilterChange} disabled={pending}>
               <option value="">Toate</option>
               {Object.entries(SEVERITIES).map(([value, label]) => (
                 <option key={value} value={value}>{label}</option>
@@ -235,7 +292,7 @@ function IncidentsPage() {
             </select>
           </label>
         </div>
-        <div className="list-head">
+        {!strips && <div className="list-head">
           <div className="tabs" role="group" aria-label="Filtrează după status">
             <button type="button" aria-pressed={filters.status === ''} onClick={() => setFilters({ ...filters, status: '' })}>
               Toate <span className="tab-count">{allIncidents?.length ?? '—'}</span>
@@ -246,15 +303,28 @@ function IncidentsPage() {
               </button>
             ))}
           </div>
-        </div>
+        </div>}
 
-        {loading && <p className="empty">Se încarcă incidentele...</p>}
+        {listLoading && <p className="empty">Se încarcă incidentele...</p>}
 
-        {!loading && !listError && incidents.length === 0 && (
+        {strips && <p className="visually-hidden" role="status">{announcement}</p>}
+
+        {/* Benzile se pot muta doar dupa ce a sosit si sumarul, ca o raspuns vechi sa nu suprascrie mutarea */}
+        {strips && !listLoading && !listError && (
+          <StripBoard
+            incidents={incidents}
+            serviceName={serviceName}
+            pending={pending || (allIncidents === null && !overviewError)}
+            onMove={handleMove}
+            onDelete={handleDelete}
+          />
+        )}
+
+        {!strips && !listLoading && !listError && incidents.length === 0 && (
           <p className="empty">Niciun incident nu se potrivește filtrelor. Alegeți „Toate” sau alt serviciu.</p>
         )}
 
-        {!loading && !listError && incidents.length > 0 && (
+        {!strips && !listLoading && !listError && incidents.length > 0 && (
           <div className="table-scroll">
             <table>
               <thead>

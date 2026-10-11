@@ -1,4 +1,58 @@
+import { createContext, useContext, useLayoutEffect, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { SEVERITIES, STEPS } from './api.js'
+
+// Temele interfetei: "semnale" (implicita) si "benzi", dupa tabloul cu benzi de hartie
+// pe care controlorii de trafic aerian urmaresc fiecare avion (flight progress strips)
+export const THEMES = { semnale: 'Semnale', benzi: 'Benzi de zbor' }
+const THEME_KEY = 'oncall:tema'
+
+export const ThemeContext = createContext({ theme: 'semnale', setTheme: () => {} })
+
+export function useTheme() {
+  return useContext(ThemeContext)
+}
+
+// Tema aleasa ramane in browser (localStorage) si se pune pe <html data-theme="...">, unde o citeste CSS-ul
+export function useThemeState() {
+  const [theme, setTheme] = useState(() => {
+    try {
+      const saved = localStorage.getItem(THEME_KEY)
+      return Object.hasOwn(THEMES, saved ?? '') ? saved : 'semnale'
+    } catch {
+      return 'semnale'
+    }
+  })
+  useLayoutEffect(() => {
+    document.documentElement.dataset.theme = theme
+    try {
+      localStorage.setItem(THEME_KEY, theme)
+    } catch {
+      // fara localStorage, tema se pastreaza doar pana la reincarcarea paginii
+    }
+  }, [theme])
+  return { theme, setTheme }
+}
+
+// Schimbarea animata cu View Transitions API (de exemplu banda care trece in compartimentul urmator);
+// fara suport in browser sau cu animatiile dezactivate, schimbarea se face direct.
+// Promisiunea se rezolva dupa ce pagina arata starea noua (de exemplu, ca focusul sa treaca pe banda mutata).
+export function withTransition(update) {
+  const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  if (!document.startViewTransition || reduced) {
+    flushSync(update)
+    return Promise.resolve()
+  }
+  return document.startViewTransition(() => flushSync(update)).updateCallbackDone
+}
+
+// Textul butonului pentru o tranzitie permisa; "in_lucru" inseamna altceva dupa rezolvare
+export function transitionLabel(from, to) {
+  if (to === 'confirmat') return 'Confirmă'
+  if (to === 'in_lucru') return from === 'rezolvat' ? 'Redeschide' : 'Începe lucrul'
+  if (to === 'rezolvat') return 'Marchează rezolvat'
+  return 'Închide incidentul'
+}
 
 // Elemente de interfata folosite pe mai multe pagini: iconite (SVG desenat cu linii) si etichete.
 // Iconitele sunt decorative (aria-hidden); textul de langa ele spune ce face butonul.
@@ -14,8 +68,19 @@ const line = {
   'aria-hidden': true,
 }
 
-// Semnul aplicatiei: un semafor cu trei lampi, ca pe tabloul serviciilor
+// Semnul aplicatiei: un semafor cu trei lampi, ca pe tabloul serviciilor;
+// in tema "benzi", o banda de hartie in suportul ei colorat
 export function Logo() {
+  const { theme } = useTheme()
+  if (theme === 'benzi') {
+    return (
+      <svg width="34" height="20" viewBox="0 0 34 20" aria-hidden="true">
+        <rect width="34" height="20" rx="2" fill="var(--strip)" />
+        <rect width="7" height="20" rx="1" fill="var(--holder-1)" />
+        <path d="M11 7h12M11 13h8M27 3v14" stroke="var(--ink)" strokeWidth="1.6" />
+      </svg>
+    )
+  }
   return (
     <svg width="18" height="30" viewBox="0 0 18 30" aria-hidden="true">
       <rect width="18" height="30" rx="4" fill="var(--ink)" />
