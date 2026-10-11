@@ -27,6 +27,15 @@ export default function Agenda() {
     localStorage.setItem('models', JSON.stringify(safe))
   }
 
+  const realModels = models.map((m) => m.name)
+  const allPicked = realModels.length > 0 && realModels.every((n) => picked.includes(n))
+
+  function pickAll() {
+    const next = allPicked ? ['auto'] : realModels
+    setPicked(next)
+    localStorage.setItem('models', JSON.stringify(next))
+  }
+
   async function submit(event) {
     event.preventDefault()
     setBusy(true)
@@ -65,7 +74,14 @@ export default function Agenda() {
         </label>
 
         <fieldset className="field">
-          <legend>Modelul</legend>
+          <legend>
+            Modelul
+            {realModels.length > 1 && (
+              <button type="button" className="link" onClick={pickAll}>
+                {allPicked ? 'renunță la toate' : `selectează toate (${realModels.length})`}
+              </button>
+            )}
+          </legend>
           <div className="chips">
             {options.map((o) => (
               <button type="button" key={o.name} className="chip" aria-pressed={picked.includes(o.name)}
@@ -75,7 +91,7 @@ export default function Agenda() {
             ))}
           </div>
           {picked.length > 1 && (
-            <p className="hint">Ai ales {picked.length} modele: aceeași cerere rulează la fiecare, iar răspunsurile se compară în Istoric.</p>
+            <p className="hint">Ai ales {picked.length} modele: aceeași cerere rulează la fiecare, pe rând, iar răspunsurile se compară în Istoric.</p>
           )}
         </fieldset>
 

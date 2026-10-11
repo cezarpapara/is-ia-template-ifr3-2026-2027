@@ -4,6 +4,7 @@
 import json
 import re
 import threading
+import time
 from datetime import datetime, timezone
 
 import psutil
@@ -120,10 +121,16 @@ def _claim() -> int | None:
         if info and info["provider"] == "ollama" and model not in {m["name"] for m in loaded}:
             need = info["size_bytes"] * _RAM_MARGIN
             free = psutil.virtual_memory().available
+            if need > free and loaded:
+                # Un singur job ruleaza odata, deci modelele incarcate nu mai sunt necesare: le eliberam
+                for m in loaded:
+                    try:
+                        llm.unload(m["name"])
+                    except llm.LLMError:
+                        pass
+                time.sleep(3)
+                free = psutil.virtual_memory().available
             if need > free:
-                if loaded:  # asteptam sa se elibereze (modelele incarcate expira singure)
-                    _set("waiting_ram", job, f"{model} are nevoie de {need / 2**30:.1f} GB, liberi: {free / 2**30:.1f} GB")
-                    return None
                 _fail(db, job, f"Modelul {model} nu incape in RAM: are nevoie de {need / 2**30:.1f} GB, liberi: {free / 2**30:.1f} GB.")
                 return None
 

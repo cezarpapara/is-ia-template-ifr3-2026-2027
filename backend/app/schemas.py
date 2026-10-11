@@ -68,7 +68,7 @@ class JobCreate(BaseModel):
     title: str | None = Field(default=None, max_length=200)
     system: str | None = None
     # Mai multe modele = comparatie: se creeaza cate un job pentru fiecare, cu acelasi group_id
-    models: list[str] = Field(default=["auto"], min_length=1, max_length=5)
+    models: list[str] = Field(default=["auto"], min_length=1, max_length=20)
     priority: int = Field(default=2, ge=1, le=3)
     scheduled_at: datetime | None = None
     use_memory: bool = True
