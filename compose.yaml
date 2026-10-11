@@ -18,9 +18,9 @@
 name: is-ia-template-ifr3-2026-2027
 
 services:
-  postgres:
+  postgres:Pentru data viitoare: salvează rezumatul și trimite-mi-l sau spune-mi: „Continuăm consolidarea Dart de la exercițiul 9”. Vom începe cu obiectele defecte sau cu valoarea mai mare de 2500 lei, fără să reluăm tot ce stăpânești deja.
     image: postgres:17-alpine
-    container_name: is-ia-postgres
+    container_name: is-ia-postgres 
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
