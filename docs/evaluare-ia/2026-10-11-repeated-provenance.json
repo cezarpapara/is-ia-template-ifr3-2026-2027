@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "frozen_at": "2026-10-11T08:09:30.817566+00:00",
+  "base_commit": "9299fd3b6d53c67a70c7b2791f686f33f717ea93",
+  "scope": "Synthetic fixtures only; no database reads or writes; production prompt unchanged.",
+  "model": {
+    "name": "gpt-oss:20b",
+    "model": "gpt-oss:20b",
+    "modified_at": "2026-09-11T12:54:58.938734138+03:00",
+    "size": 13793441244,
+    "digest": "17052f91a42e97930aa6e28a6c6c06a983e6a58dbb00434885a0cf5313e376f7",
+    "details": {
+      "parent_model": "",
+      "format": "gguf",
+      "family": "gptoss",
+      "families": [
+        "gptoss"
+      ],
+      "parameter_size": "20.9B",
+      "quantization_level": "MXFP4"
+    }
+  },
+  "ollama_version": "0.18.2",
+  "generation": {
+    "request_format": "json",
+    "stream": false,
+    "history": "New system/user messages per attempt",
+    "options_sent": null,
+    "seed_sent": null,
+    "effective_server_defaults": "Not enumerated; existing application llm.chat uses server/model defaults.",
+    "concurrency": 1,
+    "order": "Serial round-robin: all selected cases, then next repetition."
+  },
+  "planned_attempts": {
+    "development_cases": 4,
+    "holdout_cases": 8,
+    "repetitions": 3,
+    "total": 36
+  },
+  "command": "docker compose exec -T backend python -m evaluation.run --suite all --repetitions 3 --output /tmp/postmortem-repeated-20261011.json",
+  "prompt_sha256": "ffee5edfc675439e9e56e27a61bb139ed7ed34359bc38972d2a11186b29fefac",
+  "file_sha256": {
+    "backend/app/routers/ai.py": "02c0e31b2699d3b37daf8ac8ec1b3065de582e213f280cc31ebd2670a1edc7ad",
+    "backend/app/services/llm.py": "01a252e629c840fde8c2711268b5dd7981ce256dbe9c203e3077de026f6970b6",
+    "backend/evaluation/run.py": "fd2571b6f016065f33fa0b97ed2bec803654d0ea1b4daddd8af4d5b03f5df0e8",
+    "backend/evaluation/cases.json": "df50bd766adf15eea703668c5f7030fa3877489e046452fc5e270b44c84389ed",
+    "backend/evaluation/cases.holdout.json": "af98cf48477d2194b33719682ae00d1993ccadb2ccce7dac3142363f0b53ab11",
+    "docs/evaluare-ia/protocol-holdout.md": "90c6d5787c85ea2e9dff62bef5555d75b8f03c789f63779314b8cac6fb38aa1e"
+  },
+  "assessment": "Assistant evidence review with independent cross-check; human review pending."
+}

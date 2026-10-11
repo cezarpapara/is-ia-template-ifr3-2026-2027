@@ -128,6 +128,8 @@ Pagina **Starea sistemului** și bara de sus a aplicației arată dacă backend-
 
 Draftul IA păstrează contractul `cauza`, `impact`, `actiuni`, cu 2–4 acțiuni. Promptul cere diferențierea faptelor, ipotezelor și informațiilor lipsă; datele incidentului sunt tratate ca material de analizat. Validarea structurii JSON nu demonstrează corectitudinea concluziilor: evaluarea include și o rubrică de verificare umană.
 
+[Evaluarea repetată](docs/evaluare-ia/2026-10-11-repeated-report.md) păstrează 36 de încercări pe 12 incidente sintetice, inclusiv opt cazuri noi. Răspunsurile brute, erorile și scorurile asistentului sunt separate de evaluarea umană; seturile, promptul și modelul sunt identificate în manifestul rulării.
+
 Textul de postmortem nesalvat se recuperează în aceeași filă a browserului după reîncărcare. O propunere IA nu înlocuiește automat textul, iar un răspuns întârziat la salvare nu elimină editările mai noi.
 
 ## Îndrumarele de laborator
