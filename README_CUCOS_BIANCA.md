@@ -1,0 +1,1 @@
+Am pornit aplicatia
