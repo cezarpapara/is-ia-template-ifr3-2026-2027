@@ -83,6 +83,10 @@ export const api = {
 
   // POST /api/ai/tasks/{id}/subtasks
   suggestSubtasks: (taskId) => request(`/api/ai/tasks/${taskId}/subtasks`, { method: 'POST' }),
+  // POST /api/ai/triage ---- 23.10.2026
+  triage: (text) => request('/api/ai/triage', {method: 'POST', body: JSON.stringify({ text }),}),
+  // POST /api/ai/triage ---- 23.10.2026
+  triage: (text) => request('/api/ai/triage', {method: 'POST', body: JSON.stringify({ text }),}),
 }
 
 // Textele afisate pentru statusuri si prioritati

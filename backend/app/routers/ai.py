@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import get_db
 from app.models import Task
-from app.schemas import AiStatus, ChatRequest, ChatResponse, SubtasksResponse
+from app.schemas import AiStatus, ChatRequest, ChatResponse, SubtasksResponse, TriageRequest, TriageResponse
 from app.services import llm
 
 router = APIRouter(prefix="/ai", tags=["Inteligenta artificiala"])
@@ -102,3 +102,40 @@ def parse_subtasks(answer: str) -> list[str]:
         if isinstance(item, str) and item.strip():
             subtasks.append(item.strip())
     return subtasks[:5]
+
+
+
+
+#--23.10.2026--
+import json
+
+#---Instructiune  Ollama---
+TRIAGE_PROMPT = (
+    "Esti un asistent de triaj software. Analizeaza textul si raspunde numai cu un JSON de forma:\n"
+    '{"priority": 2, "category": "backend", "estimated_hours": 4, "summary": "rezumat scurt", "reason": "motivul"}'
+)
+
+#---Endpoint-ul - adresa la care raspunde serverul---
+@router.post("/triage", response_model=TriageResponse)
+def ai_triage(data: TriageRequest):
+
+#---Model---
+    messages = [
+        {"role": "system", "content": TRIAGE_PROMPT},
+        {"role": "user", "content": data.text},
+    ]
+
+#---Trimitem la Ollama/raspuns in JSON---
+    try:
+        answer = llm.chat(messages, json_format=True)
+    except llm.LLMError as error:
+        raise HTTPException(status_code=503, detail=str(error))
+
+#---Transformam textul primit intr un dictionar de date
+    try:
+        result = json.loads(answer)
+    except Exception:
+        raise HTTPException(status_code=502, detail="Nu avem raspuns in format JSON valid.")
+
+#---Trimitem rezultatul inapoi
+    return TriageResponse(model=settings.ollama_model, **result)

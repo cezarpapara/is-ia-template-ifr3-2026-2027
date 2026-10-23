@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api.js'
+import TriageBox from '../components/TriageBox.jsx' //---23.10.2026---
 
 // Exemple de intrebari, puse pe butoane
 const EXAMPLES = [
@@ -138,8 +139,10 @@ function AssistantPage() {
           </ol>
         )}
       </section>
+      <TriageBox />
     </>
   )
 }
+
 
 export default AssistantPage

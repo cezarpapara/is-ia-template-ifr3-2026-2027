@@ -80,3 +80,22 @@ class ChatResponse(BaseModel):
 class SubtasksResponse(BaseModel):
     task_id: int
     subtasks: list[str]
+
+#---23.10.2026---
+# ----Asistent pentru erori de programare----
+
+class TriageRequest(BaseModel):
+    text: str=Field(
+        min_length=5,
+        max_length=2000,  #-minim litere 5 max 2000-
+        description="Descriere eroare semnalata"
+    )
+
+class TriageResponse(BaseModel):
+    model: str
+    priority: int=Field(ge=1, le=3, description="1=mica, 2=medie, 3=mare")
+    category:str
+    estimated_hours:int=Field(ge=1, le=40, description="Ore estimate")
+    summary: str
+    reason: str
+
