@@ -80,3 +80,18 @@ class ChatResponse(BaseModel):
 class SubtasksResponse(BaseModel):
     task_id: int
     subtasks: list[str]
+
+class ClassifyRequest(BaseModel):
+    text: str = Field(
+        min_length=3,
+        max_length=200,
+        examples=["Butonul de salvare nu merge pe telefon, clientii se plang."],
+    )
+
+
+class ClassifyResponse(BaseModel):
+    model: str
+    priority: int = Field(ge=1, le=3)
+    category: str
+    reason: str
+    summary: str

@@ -6,7 +6,14 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import get_db
 from app.models import Task
-from app.schemas import AiStatus, ChatRequest, ChatResponse, SubtasksResponse
+from app.schemas import (
+    AiStatus,
+    ChatRequest,
+    ChatResponse,
+    ClassifyRequest,
+    ClassifyResponse,
+    SubtasksResponse,
+)
 from app.services import llm
 
 router = APIRouter(prefix="/ai", tags=["Inteligenta artificiala"])
@@ -102,3 +109,91 @@ def parse_subtasks(answer: str) -> list[str]:
         if isinstance(item, str) and item.strip():
             subtasks.append(item.strip())
     return subtasks[:5]
+
+
+# Categoriile permise
+CATEGORIES = [
+    "backend",
+    "frontend",
+    "baza_de_date",
+    "testare",
+    "documentatie",
+    "altele",
+]
+
+CLASSIFY_PROMPT = (
+    "Esti un asistent care clasifica sarcini dintr-un proiect software. "
+    "Stabilesti prioritatea: 1 = mica, 2 = medie, "
+    "3 = mare (urgenta sau blocheaza alte sarcini). "
+    f"Alegi categoria dintre: {', '.join(CATEGORIES)}. "
+    "Exemple de clasificare:\n"
+    "Text: 'Pagina de login are culori gresite.' "
+    "Rezultat: priority=1, category='frontend', "
+    "reason='Problema este vizuala si nu blocheaza utilizarea.'\n"
+    "Text: 'Baza de date nu mai raspunde si aplicatia este blocata.' "
+    "Rezultat: priority=3, category='baza_de_date', "
+    "reason='Aplicatia este blocata de indisponibilitatea bazei de date.'\n"
+    "Raspunde DOAR cu JSON de forma: "
+    '{"priority": 2, "category": "frontend", '
+    '"reason": "o propozitie scurta",'
+    '"summary": "Butonul de salvare nu functioneaza."}'
+)
+
+
+def parse_classification(answer: str) -> dict | None:
+    """Verifica raspunsul modelului; intoarce None daca nu poate fi folosit."""
+    try:
+        data = json.loads(answer)
+    except json.JSONDecodeError:
+        return None
+
+    if not isinstance(data, dict):
+        return None
+
+    try:
+        priority = int(data.get("priority"))
+    except (TypeError, ValueError):
+        return None
+
+    if priority not in (1, 2, 3):
+        return None
+
+    category = str(data.get("category", "")).strip().lower()
+    if category not in CATEGORIES:
+        category = "altele"
+
+    reason = str(data.get("reason", "")).strip()
+
+    summary = str(data.get("summary", "")).strip()
+
+    if not summary or len(summary.split()) > 10:
+        return None
+
+    return {
+        "priority": priority,
+        "category": category,
+        "reason": reason,
+        "summary": summary,
+    }
+
+
+# POST /api/ai/classify
+@router.post("/classify", response_model=ClassifyResponse)
+def ai_classify(data: ClassifyRequest):
+    messages = [
+        {"role": "system", "content": CLASSIFY_PROMPT},
+        {"role": "user", "content": data.text},
+    ]
+
+    try:
+        answer = llm.chat(messages, json_format=True)
+    except llm.LLMError as error:
+        raise HTTPException(status_code=503, detail=str(error))
+
+    result = parse_classification(answer)
+
+    if result is None:
+        detail = "Modelul nu a raspuns in formatul cerut. Incercati din nou."
+        raise HTTPException(status_code=502, detail=detail)
+
+    return ClassifyResponse(model=settings.ollama_model, **result)
